@@ -66,10 +66,12 @@ protected Q_SLOTS:
 protected:
   NodeList CompileEmitSelection() const;
 
+  void changeEvent(QEvent *event) override;
+
   void UpdateInfo() override;
   virtual void UpdateList();
 
-  void OnNodePredicateChanged(mitk::NodePredicateBase* newPredicate) override;
+  void OnNodePredicateChanged(const mitk::NodePredicateBase* newPredicate) override;
   void OnDataStorageChanged() override;
   void NodeRemovedFromStorage(const mitk::DataNode* node) override;
 

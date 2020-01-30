@@ -76,9 +76,18 @@ QmitkSingleNodeSelectionWidget::NodeList QmitkSingleNodeSelectionWidget::Compile
   return result;
 }
 
-void QmitkSingleNodeSelectionWidget::OnNodePredicateChanged(mitk::NodePredicateBase* /*newPredicate*/)
+void QmitkSingleNodeSelectionWidget::OnNodePredicateChanged(const mitk::NodePredicateBase* /*newPredicate*/)
 {
-  m_SelectedNode = this->ExtractCurrentValidSelection(m_ExternalSelection);
+  if (m_NodePredicate.IsNotNull() && m_SelectedNode.IsNotNull() && !m_NodePredicate->CheckNode(m_SelectedNode))
+  {
+    m_SelectedNode = nullptr;
+  }
+
+
+  if (m_SelectedNode.IsNull())
+  {
+    m_SelectedNode = this->ExtractCurrentValidSelection(m_ExternalSelection);
+  }
 };
 
 void QmitkSingleNodeSelectionWidget::OnDataStorageChanged()
@@ -115,8 +124,11 @@ bool QmitkSingleNodeSelectionWidget::eventFilter(QObject *obj, QEvent *ev)
 
       if (mouseEv->button() == Qt::LeftButton)
       {
-        this->EditSelection();
-        return true;
+        if (this->isEnabled())
+        {
+          this->EditSelection();
+          return true;
+        }
       }
       else
       {
@@ -191,6 +203,7 @@ void QmitkSingleNodeSelectionWidget::UpdateInfo()
     {
       m_Controls.btnSelect->SetNodeInfo(m_InvalidInfo);
     }
+    m_Controls.btnSelect->SetSelectionIsOptional(m_IsOptional);
     m_Controls.btnClear->setVisible(false);
   }
   else

@@ -55,7 +55,7 @@ public:
   /**
   * Creates smartpointer typedefs
   */
-  berryObjectMacro(QmitkMatchPoint)
+  berryObjectMacro(QmitkMatchPoint);
 
   QmitkMatchPoint();
   ~QmitkMatchPoint() override;
@@ -91,10 +91,6 @@ protected:
   void CreateQtPartControl(QWidget* parent) override;
 
   void SetFocus() override;
-
-  /// \brief called by QmitkFunctionality when DataManager's selection has changed
-  void OnSelectionChanged(berry::IWorkbenchPart::Pointer source,
-                                  const QList<mitk::DataNode::Pointer>& nodes) override;
 
 private:
 

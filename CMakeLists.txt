@@ -191,16 +191,23 @@ option(BUILD_SHARED_LIBS "Build MITK with shared libraries" ON)
 option(WITH_COVERAGE "Enable/Disable coverage" OFF)
 option(BUILD_TESTING "Test the project" ON)
 option(MITK_FAST_TESTING "Disable long-running tests like packaging" OFF)
+option(MITK_XVFB_TESTING "Execute test drivers through xvfb-run" OFF)
 
 option(MITK_BUILD_ALL_APPS "Build all MITK applications" OFF)
 option(MITK_BUILD_EXAMPLES "Build the MITK Examples" OFF)
 option(MITK_ENABLE_PIC_READER "Enable support for reading the DKFZ pic file format." ON)
 
 mark_as_advanced(
+  MITK_XVFB_TESTING
   MITK_FAST_TESTING
   MITK_BUILD_ALL_APPS
   MITK_ENABLE_PIC_READER
 )
+
+# -----------------------------------------
+# Other options
+set(MITK_CUSTOM_REVISION_DESC "" CACHE STRING "Override MITK revision description")
+mark_as_advanced(MITK_CUSTOM_REVISION_DESC)
 
 # -----------------------------------------
 # Qt version related variables
@@ -474,12 +481,22 @@ list(APPEND CTEST_PROJECT_SUBPROJECTS
   MITK-CoreUI
   MITK-IGT
   MITK-ToF
-  MITK-Diffusion
   MITK-Modules # all modules not contained in a specific subproject
   MITK-Plugins # all plugins not contained in a specific subproject
   MITK-Examples
   Unlabeled # special "subproject" catching all unlabeled targets and tests
   )
+
+foreach(MITK_EXTENSION_DIR ${MITK_EXTENSION_DIRS})
+  get_filename_component(MITK_EXTENSION_DIR ${MITK_EXTENSION_DIR} ABSOLUTE)
+  if(EXISTS ${MITK_CMAKE_EXTENSION_DIR}/CMake/CTestSubprojectList.cmake)
+    set(MITK_CTEST_SUBPROJECTS "")
+    include(${MITK_CMAKE_EXTENSION_DIR}/CMake/CTestSubprojectList.cmake)
+    if(MITK_CTEST_SUBPROJECTS)
+      list(APPEND CTEST_PROJECT_SUBPROJECTS ${MITK_CTEST_SUBPROJECTS})
+    endif()
+  endif()
+endforeach()
 
 # Configure CTestConfigSubProject.cmake that could be used by CTest scripts
 configure_file(${MITK_SOURCE_DIR}/CTestConfigSubProject.cmake.in
@@ -549,7 +566,6 @@ include(mitkFunctionInstallCTKPlugin)
 include(mitkFunctionInstallProvisioningFiles)
 include(mitkFunctionInstallThirdPartyCTKPlugins)
 include(mitkFunctionOrganizeSources)
-include(mitkFunctionTestPlugin)
 include(mitkFunctionUseModules)
 if( ${MITK_USE_MatchPoint} )
   include(mitkFunctionCreateMatchPointDeployedAlgorithm)
@@ -639,7 +655,7 @@ find_package(Doxygen)
 option(BLUEBERRY_DEBUG_SMARTPOINTER "Enable code for debugging smart pointers" OFF)
 mark_as_advanced(BLUEBERRY_DEBUG_SMARTPOINTER)
 
-# ASK THE USER TO SHOW THE CONSOLE WINDOW FOR CoreApp and mitkWorkbench
+# Ask the user to show the console window for applications
 option(MITK_SHOW_CONSOLE_WINDOW "Use this to enable or disable the console window when starting MITK GUI Applications" ON)
 mark_as_advanced(MITK_SHOW_CONSOLE_WINDOW)
 
@@ -1012,14 +1028,6 @@ if(BUILD_TESTING)
   include(CTest)
   mark_as_advanced(TCL_TCLSH DART_ROOT)
 
-  option(MITK_ENABLE_RENDERING_TESTING OFF "Enable the MITK rendering tests. Requires x-server in Linux.")
-  #Rendering testing does not work for Linux nightlies, thus it is disabled per default
-  #and activated for Mac and Windows.
-  if(WIN32 OR APPLE)
-    set(MITK_ENABLE_RENDERING_TESTING ON)
-  endif()
-  mark_as_advanced( MITK_ENABLE_RENDERING_TESTING )
-
   # Setup file for setting custom ctest vars
   configure_file(
     CMake/CTestCustom.cmake.in
@@ -1130,19 +1138,8 @@ add_subdirectory(Wrapping)
 
 if(MITK_USE_BLUEBERRY)
 
-  set(BLUEBERRY_XPDOC_OUTPUT_DIR ${MITK_DOXYGEN_OUTPUT_DIR}/html/extension-points/html/)
-
-  # Plug-in testing (needs some work to be enabled again)
-  if(BUILD_TESTING)
-    set(BLUEBERRY_UI_TEST_APP "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/CoreApp")
-    if(TARGET CoreApp)
-      get_target_property(_is_macosx_bundle CoreApp MACOSX_BUNDLE)
-      if(APPLE AND _is_macosx_bundle)
-        set(BLUEBERRY_UI_TEST_APP "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/CoreApp.app/Contents/MacOS/CoreApp")
-      endif()
-    endif()
-    set(BLUEBERRY_TEST_APP_ID "org.mitk.qt.coreapplication")
-  endif()
+  set(BLUEBERRY_XPDOC_OUTPUT_DIR "${MITK_DOXYGEN_OUTPUT_DIR}/html/extension-points/html/")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BLUEBERRY_XPDOC_OUTPUT_DIR})
 
   include("${CMAKE_CURRENT_SOURCE_DIR}/Plugins/PluginList.cmake")
   mitkFunctionWhitelistPlugins(MITK MITK_PLUGINS)

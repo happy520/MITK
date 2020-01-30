@@ -34,9 +34,6 @@ namespace mitk
     \ingroup Process
     \ingroup ToolManagerEtAl
 
-    There is a separate page describing the general design of QmitkInteractiveSegmentation: \ref
-    QmitkInteractiveSegmentationTechnicalPage
-
     This class takes a 3D mitk::Image as input and tries to replace one slice in it with the second input image, which
     is specified
     by calling SetSliceImage with a 2D mitk::Image.
@@ -59,7 +56,8 @@ namespace mitk
   {
   public:
     mitkClassMacro(OverwriteSliceImageFilter, ImageToImageFilter);
-    itkFactorylessNewMacro(Self) itkCloneMacro(Self)
+    itkFactorylessNewMacro(Self);
+    itkCloneMacro(Self);
 
       /**
         \brief Which slice to overwrite (first one has index 0).

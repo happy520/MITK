@@ -34,9 +34,6 @@ namespace mitk
 
     \ingroup ToolManagerEtAl
 
-    There is a separate page describing the general design of QmitkInteractiveSegmentation: \ref
-    QmitkInteractiveSegmentationTechnicalPage
-
     This class keeps track of the contents of a 3D segmentation image.
     \attention mitk::SliceBasedInterpolationController assumes that the image contains pixel values of 0 and 1.
 
@@ -69,8 +66,9 @@ namespace mitk
   class MITKSEGMENTATION_EXPORT SliceBasedInterpolationController : public itk::Object
   {
   public:
-    mitkClassMacroItkParent(SliceBasedInterpolationController, itk::Object) itkFactorylessNewMacro(Self)
-      itkCloneMacro(Self)
+    mitkClassMacroItkParent(SliceBasedInterpolationController, itk::Object);
+    itkFactorylessNewMacro(Self);
+    itkCloneMacro(Self);
 
       /**
         \brief Find interpolator for a given image.
