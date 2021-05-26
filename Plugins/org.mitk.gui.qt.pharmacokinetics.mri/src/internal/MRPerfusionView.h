@@ -87,16 +87,17 @@ protected:
   void GenerateDescriptiveBrixModel_ROIBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
       mitk::ParameterFitImageGeneratorBase::Pointer& generator);
 
-  void Generate3StepLinearModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
+  template <typename TParameterizer>
+  void GenerateLinearModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
       mitk::ParameterFitImageGeneratorBase::Pointer& generator);
-  void Generate3StepLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
+  template <typename TParameterizer>
+  void GenerateLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
       mitk::ParameterFitImageGeneratorBase::Pointer& generator);
 
 
   template <typename TParameterizer>
   void GenerateAIFbasedModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
                                  mitk::ParameterFitImageGeneratorBase::Pointer& generator);
-
   template <typename TParameterizer>
   void GenerateAIFbasedModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointer& modelFitInfo,
                                    mitk::ParameterFitImageGeneratorBase::Pointer& generator);
@@ -112,17 +113,20 @@ protected:
   /**Checks if the settings in the GUI are valid for the chosen model.*/
   bool CheckModelSettings() const;
 
+  bool CheckBaselineSelectionSettings() const;
+
   void InitModelComboBox() const;
+
+
+
 
   /*! Helper method that generates a node for the passed concentration image.*/
   mitk::DataNode::Pointer GenerateConcentrationNode(mitk::Image* image, const std::string& nodeName) const;
 
     /*! \brief called by QmitkFunctionality when DataManager's selection has changed
   */
-  void OnSelectionChanged(berry::IWorkbenchPart::Pointer source,
-                                  const QList<mitk::DataNode::Pointer>& selectedNodes) override;
 
-  // Variables
+  void OnNodeSelectionChanged(QList<mitk::DataNode::Pointer> /*nodes*/);
 
   /*! @brief The view's UI controls */
   Ui::MRPerfusionViewControls m_Controls;
@@ -190,6 +194,8 @@ private:
 
   mitk::NodePredicateBase::Pointer m_IsNoMaskImagePredicate;
   mitk::NodePredicateBase::Pointer m_IsMaskPredicate;
+  mitk::NodePredicateBase::Pointer m_isValidPDWImagePredicate;
+  mitk::NodePredicateBase::Pointer m_isValidTimeSeriesImagePredicate;
 
   /* Node used for the fit (my be the selected image
   or converted ones (depending on the ui settings */

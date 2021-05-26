@@ -26,6 +26,9 @@ namespace mitk
    * Instantiating this class with a given itk::ImageIOBase instance
    * will register corresponding MITK reader/writer services for that
    * ITK ImageIO object.
+   * For all ITK ImageIOs that support the serialization of MetaData
+   * (e.g. nrrd or mhd) the ItkImageIO ensures the serialization
+   * of Identification UID.
    */
   class MITKCORE_EXPORT ItkImageIO : public AbstractFileIO
   {
@@ -36,7 +39,6 @@ namespace mitk
     // -------------- AbstractFileReader -------------
 
     using AbstractFileReader::Read;
-    std::vector<itk::SmartPointer<BaseData>> Read() override;
 
     ConfidenceLevel GetReaderConfidenceLevel() const override;
 
@@ -52,6 +54,9 @@ namespace mitk
     // Fills the m_DefaultMetaDataKeys vector with default values
     virtual void InitializeDefaultMetaDataKeys();
 
+    // -------------- AbstractFileReader -------------
+    std::vector<itk::SmartPointer<BaseData>> DoRead() override;
+
   private:
     ItkImageIO(const ItkImageIO &other);
 
@@ -61,6 +66,16 @@ namespace mitk
 
     std::vector<std::string> m_DefaultMetaDataKeys;
   };
+
+  /**Helper function that converts the content of a meta data into a time point vector.
+   * If MetaData is not valid or cannot be converted an empty vector is returned.*/
+  MITKCORE_EXPORT std::vector<TimePointType> ConvertMetaDataObjectToTimePointList(const itk::MetaDataObjectBase* data);
+
+
+  /**Helper function that converts the time points of a passed time geometry to a time point list
+   and stores it in a itk::MetaDataObject. Use ConvertMetaDataObjectToTimePointList() to convert it back
+   to a time point list.*/
+  MITKCORE_EXPORT itk::MetaDataObjectBase::Pointer ConvertTimePointListToMetaDataObject(const mitk::TimeGeometry* timeGeometry);
 
 } // namespace mitk
 

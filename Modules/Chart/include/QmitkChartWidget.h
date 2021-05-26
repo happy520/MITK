@@ -65,6 +65,22 @@ public:
     solid,
     dashed
   };
+  enum class MarkerSymbol {
+    circle,
+    diamond,
+    cross,
+    square,
+    pentagon,
+    star,
+    x,
+    diamond_tall,
+    star_diamond,
+    star_triangle_up,
+    star_triangle_down,
+    asterisk,
+    cross_thin,
+    x_thin
+  };
   enum class ChartColor {
     red,
     orange,
@@ -116,6 +132,7 @@ public:
   /*!
   * \brief Adds 1D data to the widget
   * \details internally, the list is converted to a map with increasing integers keys starting at 0.
+  * \param data1D
   * \param label the name of the data that is also used as identifier.
   * \param chartType the chart type that should be used for this data entry
   * \note the data can be cleared with ClearDiagram()
@@ -136,31 +153,31 @@ public:
    * \sa UpdateData1D
    * \sa AddData2D
    */
-  void UpdateData2D(const std::map<double, double> &data2D, const std::string &label);
+  void UpdateData2D(const std::vector< std::pair<double, double> > &data2D, const std::string &label);
 
-  /*!
-  * \brief Adds 2D data to the widget. Call repeatedly for displaying multiple charts.
-  * \details each entry represents a data point: key: value --> x-value: y-value.
-  * \param label the name of the data that is also used as identifier.
-  * \param chartType the chart type that should be used for this data entry
-  * \note the data can be cleared with ClearDiagram()
-  * \note If the label name already exists, the name is replaced with a unique one by concatenating numbers to it.
-  * \warning Pie chart is significantly different than the other chart types. Here, the data given by AddData1D is summed. Each entry represents a different category.
-  */
-
-  void UpdateChartExampleData(const std::map<double, double>& data2D,
+  void UpdateChartExampleData(const std::vector< std::pair<double, double> >& data2D,
                               const std::string& label,
                               const std::string& type,
                               const std::string& color,
                               const std::string& lineStyle,
                               const std::string& pieLabelsData = 0);
 
-  void AddData2D(const std::map<double, double> &data2D,
+  /*!
+  * \brief Adds 2D data to the widget. Call repeatedly for displaying multiple charts.
+  * \details each entry represents a data point: key: value --> x-value: y-value.
+  * \param data2D
+  * \param label the name of the data that is also used as identifier.
+  * \param chartType the chart type that should be used for this data entry
+  * \note the data can be cleared with ClearDiagram()
+  * \note If the label name already exists, the name is replaced with a unique one by concatenating numbers to it.
+  * \warning Pie chart is significantly different than the other chart types. Here, the data given by AddData1D is summed. Each entry represents a different category.
+  */
+  void AddData2D(const std::vector< std::pair<double, double> > &data2D,
                  const std::string &label,
                  ChartType chartType = ChartType::bar);
 
   //Add Function for the ChartExample
-  void AddChartExampleData(const std::map<double, double>& data2D,
+  void AddChartExampleData(const std::vector< std::pair<double, double> >& data2D,
                            const std::string& label,
                            const std::string& type,
                            const std::string& color,
@@ -170,7 +187,7 @@ public:
   /*!
   * \brief Removes data from the widget, works for 1D and 2D Data
   * \param label the name of the data that is also used as identifier.
-  * \note All data can be cleared with ClearDiagram()
+  * \note All data can be cleared with Clear()
   * \throws Invalid Argument Exception when the label cannot be found
   */
   void RemoveData(const std::string& label);
@@ -181,7 +198,7 @@ public:
 
   /*!
   * \brief Sets the color of one data entry (identifier is previously assigned label)
-  * \details the color name can be "red" or a hex number (#FF0000).
+  * \details the color name can be "red" or a hex number (\c \#FF0000 ).
   * \warning Either define all data entries with a color or no data entry. If a mixed approach is used,
   * plotly choses the color of the data entry (that could be the same as a user defined color).
   * \note If an unknown label is given, nothing happens.
@@ -198,6 +215,12 @@ public:
   *  However, the line style remains also if the chart changes (e.g. new chart type)
   */
   void SetLineStyle(const std::string& label, LineStyle style);
+
+  /*!
+  * \brief Sets the marker style of one data entry (identifier is previously assigned label)
+  * \note If an unknown label is given, nothing happens.
+  */
+  void SetMarkerSymbol(const std::string &label, MarkerSymbol symbol);
 
   /*!
   * \brief Sets the axis scale to either linear (default) or logarithmic.
@@ -314,6 +337,8 @@ public:
   void Reload();
 
   QSize sizeHint() const override;
+
+  void SavePlotAsImage();
 
 public slots:
   void OnLoadFinished(bool isLoadSuccessful);

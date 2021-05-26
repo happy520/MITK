@@ -47,6 +47,8 @@ namespace mitk
   visible. It triggers generation of interpolation suggestions and also triggers acception of
   suggestions.
 
+  This class uses the mitk::ToolManagerProvider::MULTILABEL_SEGMENTATION context.
+
   \todo show/hide feedback on demand
 
   Last contributor: $Author: maleike $
@@ -140,7 +142,7 @@ protected:
     and calls Interpolate to further process this PlaneGeometry into an interpolation.
 
     \param e is a actually a mitk::SliceNavigationController::GeometrySliceEvent, sent by a SliceNavigationController
-    \param slice the SliceNavigationController
+    \param slicer the SliceNavigationController
   */
   void TranslateAndInterpolateChangedSlice(const itk::EventObject &e, mitk::SliceNavigationController *slicer);
 
@@ -149,7 +151,7 @@ protected:
     ToolManager)
     should be interpolated. The actual work is then done by our SegmentationInterpolation object.
   */
-  void Interpolate(mitk::PlaneGeometry *plane, unsigned int timeStep, mitk::SliceNavigationController *slicer);
+  void Interpolate(mitk::PlaneGeometry *plane, mitk::TimePointType timePoint, mitk::SliceNavigationController *slicer);
 
   /**
     Called internally to update the interpolation suggestion. Finds out about the focused render window and requests an
@@ -183,7 +185,7 @@ private:
 
   mitk::LabelSetImage::Pointer m_WorkingImage;
 
-  QHash<mitk::SliceNavigationController *, unsigned int> m_TimeStep;
+  QHash<mitk::SliceNavigationController *, mitk::TimePointType> m_TimePoints;
 
   mitk::DataStorage::Pointer m_DataStorage;
 

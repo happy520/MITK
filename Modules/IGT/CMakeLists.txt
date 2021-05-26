@@ -3,31 +3,30 @@ include(MITKIGTHardware.cmake)
 if(MITK_USE_MICRON_TRACKER)
   set(ADDITIONAL_INCLUDE_DIRS ${ADDITIONAL_INCLUDE_DIRS} ${MITK_MICRON_TRACKER_INCLUDE_DIR})
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${MITK_MICRON_TRACKER_LIB})
-endif(MITK_USE_MICRON_TRACKER)
+endif()
 
 if(MITK_USE_OPTITRACK_TRACKER)
   set(ADDITIONAL_INCLUDE_DIRS ${ADDITIONAL_INCLUDE_DIRS} ${MITK_OPTITRACK_TRACKER_INCLUDE_DIR})
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${MITK_OPTITRACK_TRACKER_LIB})
   add_definitions( -DMITK_USE_OPTITRACK_TRACKER )
-endif(MITK_USE_OPTITRACK_TRACKER)
+endif()
 
 if(MITK_USE_MICROBIRD_TRACKER)
   set(ADDITIONAL_INCLUDE_DIRS ${ADDITIONAL_INCLUDE_DIRS} ${MITK_USE_MICROBIRD_TRACKER_INCLUDE_DIR})
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${MITK_USE_MICROBIRD_TRACKER_LIB})
-endif(MITK_USE_MICROBIRD_TRACKER)
+endif()
 
 if(MITK_USE_POLHEMUS_TRACKER)
   set(ADDITIONAL_INCLUDE_DIRS ${ADDITIONAL_INCLUDE_DIRS} ${MITK_POLHEMUS_TRACKER_INCLUDE_DIR})
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${MITK_POLHEMUS_TRACKER_LIB})
-endif(MITK_USE_POLHEMUS_TRACKER)
+endif()
 
-MITK_CREATE_MODULE(
-  SUBPROJECTS MITK-IGT
+mitk_create_module(
   INCLUDE_DIRS
     PUBLIC Algorithms Common DataManagement ExceptionHandling IO Rendering TrackingDevices TestingHelper
     PRIVATE ${ADDITIONAL_INCLUDE_DIRS}
   DEPENDS PUBLIC MitkImageStatistics MitkSceneSerialization MitkIGTBase MitkOpenIGTLink
-  PACKAGE_DEPENDS ITK|ITKRegistrationCommon tinyxml OpenIGTLink
+  PACKAGE_DEPENDS PRIVATE ITK|RegistrationCommon OpenIGTLink tinyxml2
   ADDITIONAL_LIBS "${ADDITIONAL_LIBS}"
 )
 
@@ -46,19 +45,10 @@ if(MitkIGT_IS_ENABLED)
   MITK_INSTALL(FILES ${MITK_SOURCE_DIR}/Modules/IGT/Resources/NDIPolarisVicra.stl )
 endif()
 
-if(NOT MODULE_IS_ENABLED)
-  message(STATUS "IGTTutorialStep1 won't be built. Missing: ${_RESULT}")
-else()
-## create IGT config
-configure_file(mitkIGTConfig.h.in ${PROJECT_BINARY_DIR}/mitkIGTConfig.h @ONLY)
+if(MODULE_IS_ENABLED)
+  configure_file(mitkIGTConfig.h.in ${PROJECT_BINARY_DIR}/mitkIGTConfig.h @ONLY)
 
-# add test programm for serial communication classADD_EXECUTABLE(SerialCommunicationTest IGTTrackingDevices/mitkSerialCommunicationTest.cpp)target_link_libraries(SerialCommunicationTest mitkIGT Mitk tinyxml PocoXML)
-
-add_subdirectory(autoload/DeviceRegistry)
-
-add_subdirectory(Tutorial)
-
-add_subdirectory(Testing)
-
+  add_subdirectory(autoload/DeviceRegistry)
+  add_subdirectory(Tutorial)
+  add_subdirectory(Testing)
 endif()
-

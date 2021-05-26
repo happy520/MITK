@@ -46,6 +46,8 @@ found in the LICENSE file.
 #include <mitkTwoCompartmentExchangeModelFactory.h>
 #include <mitkThreeStepLinearModelParameterizer.h>
 #include <mitkThreeStepLinearModelFactory.h>
+#include <mitkTwoStepLinearModelParameterizer.h>
+#include <mitkTwoStepLinearModelFactory.h>
 #include <mitkModelFactoryBase.h>
 
 std::string inFilename;
@@ -69,6 +71,7 @@ std::string modelName;
 float aifHematocritLevel(0);
 float brixInjectionTime(0);
 
+const std::string MODEL_NAME_2SL = "2SL";
 const std::string MODEL_NAME_3SL = "3SL";
 const std::string MODEL_NAME_descriptive = "descriptive";
 const std::string MODEL_NAME_tofts = "tofts";
@@ -102,7 +105,7 @@ void setupParser(mitkCommandLineParser& parser)
     // see mitkCommandLineParser::addArgument for more information
     parser.beginGroup("Model parameters");
     parser.addArgument(
-        "model", "l", mitkCommandLineParser::String, "Model function", "Model that should be used to fit the concentration signal. Options are: \""+MODEL_NAME_descriptive+"\" (descriptive pharmacokinetic Brix model),\""+MODEL_NAME_3SL+"\" (three step linear model), \""+MODEL_NAME_tofts+"\" (extended tofts model) or \""+MODEL_NAME_2CX+"\" (two compartment exchange model).", us::Any(std::string(MODEL_NAME_tofts)));
+        "model", "l", mitkCommandLineParser::String, "Model function", "Model that should be used to fit the concentration signal. Options are: \""+MODEL_NAME_descriptive+"\" (descriptive pharmacokinetic Brix model),\"" + MODEL_NAME_2SL + "\" (two step linear model),\""+MODEL_NAME_3SL+"\" (three step linear model), \""+MODEL_NAME_tofts+"\" (extended tofts model) or \""+MODEL_NAME_2CX+"\" (two compartment exchange model).", us::Any(std::string(MODEL_NAME_tofts)));
     parser.addArgument(
         "injectiontime", "j", mitkCommandLineParser::Float, "Injection time [min]", "Injection time of the bolus. This information is needed for the descriptive pharmacokinetic Brix model.", us::Any());
     parser.endGroup();
@@ -349,7 +352,7 @@ void generateDescriptiveBrixModel_PixelBased(mitk::modelFit::ModelFitInfo::Point
   if (mask3D.IsNotNull())
   {
     fitGenerator->SetMask(mask3D);
-    roiUID = mitk::EnsureModelFitUID(mask);
+    roiUID = mask->GetUID();
   }
 
   fitGenerator->SetDynamicImage(image);
@@ -405,7 +408,7 @@ void generateDescriptiveBrixModel_ROIBased(mitk::modelFit::ModelFitInfo::Pointer
 
   generator = fitGenerator.GetPointer();
 
-  std::string roiUID = mitk::EnsureModelFitUID(mask);
+  std::string roiUID = mask->GetUID();
 
   //Create model info
   modelFitInfo = mitk::modelFit::CreateFitInfoFromModelParameterizer(modelParameterizer,
@@ -421,20 +424,19 @@ void generateDescriptiveBrixModel_ROIBased(mitk::modelFit::ModelFitInfo::Pointer
   modelFitInfo->inputData.SetTableValue("ROI", infoSignal);
 }
 
-
-void Generate3StepLinearModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointer&
+template <typename TParameterizer, typename TFactory>
+void GenerateLinearModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointer&
   modelFitInfo, mitk::ParameterFitImageGeneratorBase::Pointer& generator)
 {
   mitk::PixelBasedParameterFitImageGenerator::Pointer fitGenerator =
     mitk::PixelBasedParameterFitImageGenerator::New();
 
-  mitk::ThreeStepLinearModelParameterizer::Pointer modelParameterizer =
-    mitk::ThreeStepLinearModelParameterizer::New();
+  typename TParameterizer::Pointer modelParameterizer = TParameterizer::New();
 
   mitk::Image::Pointer mask3D = getMask3D();
 
   //Specify fitting strategy and criterion parameters
-  mitk::ModelFactoryBase::Pointer factory = mitk::ThreeStepLinearModelFactory::New().GetPointer();
+  mitk::ModelFactoryBase::Pointer factory = TFactory::New().GetPointer();
   mitk::ModelFitFunctorBase::Pointer fitFunctor = createDefaultFitFunctor(modelParameterizer, factory);
 
   //Parametrize fit generator
@@ -444,7 +446,7 @@ void Generate3StepLinearModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointe
   if (mask3D.IsNotNull())
   {
     fitGenerator->SetMask(mask3D);
-    roiUID = mitk::EnsureModelFitUID(mask);
+    roiUID = mask->GetUID();
   }
 
   fitGenerator->SetDynamicImage(image);
@@ -457,7 +459,8 @@ void Generate3StepLinearModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointe
     image, mitk::ModelFitConstants::FIT_TYPE_VALUE_PIXELBASED(), roiUID);
 }
 
-void Generate3StepLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer&
+template <typename TParameterizer, typename TFactory>
+void GenerateLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer&
   modelFitInfo, mitk::ParameterFitImageGeneratorBase::Pointer& generator)
 {
   mitk::Image::Pointer mask3D = getMask3D();
@@ -470,8 +473,7 @@ void Generate3StepLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer&
   mitk::ROIBasedParameterFitImageGenerator::Pointer fitGenerator =
     mitk::ROIBasedParameterFitImageGenerator::New();
 
-  mitk::ThreeStepLinearModelParameterizer::Pointer modelParameterizer =
-    mitk::ThreeStepLinearModelParameterizer::New();
+  typename TParameterizer::Pointer modelParameterizer = TParameterizer::New();
 
   //Compute ROI signal
   mitk::MaskedDynamicImageStatisticsGenerator::Pointer signalGenerator =
@@ -483,8 +485,9 @@ void Generate3StepLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer&
   mitk::MaskedDynamicImageStatisticsGenerator::ResultType roiSignal = signalGenerator->GetMean();
 
   //Specify fitting strategy and criterion parameters
-  mitk::ModelFactoryBase::Pointer factory = mitk::ThreeStepLinearModelFactory::New().GetPointer();
+  mitk::ModelFactoryBase::Pointer factory = TFactory::New().GetPointer();
   mitk::ModelFitFunctorBase::Pointer fitFunctor = createDefaultFitFunctor(modelParameterizer, factory);
+
 
   //Parametrize fit generator
   fitGenerator->SetModelParameterizer(modelParameterizer);
@@ -495,7 +498,7 @@ void Generate3StepLinearModelFit_ROIBased(mitk::modelFit::ModelFitInfo::Pointer&
 
   generator = fitGenerator.GetPointer();
 
-  std::string roiUID = mitk::EnsureModelFitUID(mask);
+  std::string roiUID = mask->GetUID();
 
   //Create model info
   modelFitInfo = mitk::modelFit::CreateFitInfoFromModelParameterizer(modelParameterizer,
@@ -541,7 +544,7 @@ void generateAIFbasedModelFit_PixelBased(mitk::modelFit::ModelFitInfo::Pointer&
   if (mask3D.IsNotNull())
   {
     fitGenerator->SetMask(mask3D);
-    roiUID = mitk::EnsureModelFitUID(mask);
+    roiUID = mask->GetUID();
   }
 
   fitGenerator->SetDynamicImage(image);
@@ -612,7 +615,7 @@ void generateAIFbasedModelFit_ROIBased(
 
   generator = fitGenerator.GetPointer();
 
-  std::string roiUID = mitk::EnsureModelFitUID(mask);
+  std::string roiUID = mask->GetUID();
 
   //Create model info
   modelFitInfo = mitk::modelFit::CreateFitInfoFromModelParameterizer(modelParameterizer,
@@ -672,6 +675,7 @@ void createFitGenerator(mitk::modelFit::ModelFitInfo::Pointer& fitSession, mitk:
   bool isToftsFactory = modelName == MODEL_NAME_tofts;
   bool is2CXMFactory = modelName == MODEL_NAME_2CX;
   bool is3SLFactory = modelName == MODEL_NAME_3SL;
+  bool is2SLFactory = modelName == MODEL_NAME_2SL;
 
   if (isDescBrixFactory)
   {
@@ -690,11 +694,23 @@ void createFitGenerator(mitk::modelFit::ModelFitInfo::Pointer& fitSession, mitk:
     std::cout << "Model:  three step linear model" << std::endl;
     if (!roibased)
     {
-      Generate3StepLinearModelFit_PixelBased(fitSession, generator);
+      GenerateLinearModelFit_PixelBased<mitk::ThreeStepLinearModelParameterizer, mitk::ThreeStepLinearModelFactory>(fitSession, generator);
     }
     else
     {
-      Generate3StepLinearModelFit_ROIBased(fitSession, generator);
+      GenerateLinearModelFit_ROIBased<mitk::ThreeStepLinearModelParameterizer, mitk::ThreeStepLinearModelFactory>(fitSession, generator);
+    }
+  }
+  else if (is2SLFactory)
+  {
+    std::cout << "Model:  two step linear model" << std::endl;
+    if (!roibased)
+    {
+      GenerateLinearModelFit_PixelBased<mitk::TwoStepLinearModelParameterizer, mitk::TwoStepLinearModelFactory>(fitSession, generator);
+    }
+    else
+    {
+      GenerateLinearModelFit_ROIBased<mitk::TwoStepLinearModelParameterizer, mitk::TwoStepLinearModelFactory>(fitSession, generator);
     }
   }
   else if (isToftsFactory)
@@ -775,7 +791,7 @@ int main(int argc, char* argv[])
     setupParser(parser);
     const std::map<std::string, us::Any>& parsedArgs = parser.parseArguments(argc, argv);
 
-    mitk::PreferenceListReaderOptionsFunctor readerFilterFunctor = mitk::PreferenceListReaderOptionsFunctor({ "MITK DICOM Reader v2 (classic config)" }, { "MITK DICOM Reader" });
+    mitk::PreferenceListReaderOptionsFunctor readerFilterFunctor = mitk::PreferenceListReaderOptionsFunctor({ "MITK DICOM Reader v2 (autoselect)" }, { "" });
 
     if (!configureApplicationSettings(parsedArgs))
     {
@@ -805,7 +821,7 @@ int main(int argc, char* argv[])
             std::cout << "Mask:  none" << std::endl;
         }
 
-        if (modelName != MODEL_NAME_descriptive && modelName != MODEL_NAME_3SL)
+        if (modelName != MODEL_NAME_descriptive && modelName != MODEL_NAME_3SL && MODEL_NAME_2SL != modelName)
         {
           if (!aifMaskFileName.empty())
           {

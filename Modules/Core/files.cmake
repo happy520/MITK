@@ -33,6 +33,7 @@ set(CPP_FILES
   Algorithms/mitkSurfaceToSurfaceFilter.cpp
   Algorithms/mitkUIDGenerator.cpp
   Algorithms/mitkVolumeCalculator.cpp
+  Algorithms/mitkTemporalJoinImagesFilter.cpp
 
   Controllers/mitkBaseController.cpp
   Controllers/mitkCallbackFromGUIThread.cpp
@@ -126,6 +127,7 @@ set(CPP_FILES
   DataManagement/mitkNodePredicateProperty.cpp
   DataManagement/mitkNodePredicateDataProperty.cpp
   DataManagement/mitkNodePredicateSource.cpp
+  DataManagement/mitkNodePredicateSubGeometry.cpp
   DataManagement/mitkNumericConstants.cpp
   DataManagement/mitkPlaneGeometry.cpp
   DataManagement/mitkPlaneGeometryData.cpp
@@ -268,6 +270,7 @@ set(CPP_FILES
   IO/mitkSurfaceVtkXmlIO.cpp
   IO/mitkVtkLoggingAdapter.cpp
   IO/mitkPreferenceListReaderOptionsFunctor.cpp
+  IO/mitkIOMetaInformationPropertyConstants.cpp
 
   Rendering/mitkAbstractAnnotationRenderer.cpp
   Rendering/mitkAnnotationUtils.cpp

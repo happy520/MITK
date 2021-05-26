@@ -1,8 +1,11 @@
-MITK_CREATE_MODULE(
-  INCLUDE_DIRS PUBLIC Rendering Helper algorithms
+mitk_create_module(
+  INCLUDE_DIRS
+    PUBLIC algorithms
+    PRIVATE src/Helper src/Rendering
   DEPENDS MitkCore MitkSceneSerializationBase
   PACKAGE_DEPENDS
    PUBLIC MatchPoint
+   PRIVATE VTK|ImagingGeneral+ImagingHybrid
 )
 
 if(TARGET ${MODULE_TARGET})
@@ -13,13 +16,14 @@ if(TARGET ${MODULE_TARGET})
 
   foreach(profile_file ${ALG_PROFILE_FILES})
     get_filename_component(profile_name ${profile_file} NAME_WE)
-    MESSAGE(STATUS "... generate MDRA profile ${profile_name} (from ${profile_file})...")
+    message(STATUS "Generate MDRA profile ${profile_name} (from ${profile_file})")
     CREATE_ALGORITHM_PROFILE(${profile_name} ${ALG_PROFILE_DIR}/${profile_file})
-  endforeach(profile_file)
+  endforeach()
 
-  ADD_SUBDIRECTORY(autoload/IO)
-  ADD_SUBDIRECTORY(deployment)
+  add_subdirectory(autoload/IO)
+  add_subdirectory(deployment)
   if(BUILD_TESTING)
-    ADD_SUBDIRECTORY(Testing)
-  endif(BUILD_TESTING)
+    add_subdirectory(Testing)
+  endif()
+  add_subdirectory(cmdapps)
 endif()

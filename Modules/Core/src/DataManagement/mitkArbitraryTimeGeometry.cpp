@@ -48,17 +48,23 @@ mitk::TimePointType mitk::ArbitraryTimeGeometry::GetMaximumTimePoint() const
   {
     result = m_MaximumTimePoints.back();
   }
+
+  ///////////////////////////////////////
+  // Workarround T27883. See https://phabricator.mitk.org/T27883#219473 for more details.
+  // This workarround should be removed as soon as T28262 is solved!
+  if (this->HasCollapsedFinalTimeStep())
+  {
+    result = m_MinimumTimePoints.back() + 1;
+  }
+  // End of workarround for T27883
+  //////////////////////////////////////
+
   return result;
 }
 
 mitk::TimePointType mitk::ArbitraryTimeGeometry::GetMinimumTimePoint( TimeStepType step ) const
 {
-  TimePointType result = GetMinimumTimePoint();
-  if (step > 0 && step <= m_MaximumTimePoints.size())
-  {
-    result = m_MaximumTimePoints[step - 1];
-  }
-  return result;
+  return step < m_MinimumTimePoints.size() ? m_MinimumTimePoints[step] : 0.0f;
 };
 
 mitk::TimePointType mitk::ArbitraryTimeGeometry::GetMaximumTimePoint( TimeStepType step ) const
@@ -68,6 +74,17 @@ mitk::TimePointType mitk::ArbitraryTimeGeometry::GetMaximumTimePoint( TimeStepTy
   {
     result = m_MaximumTimePoints[step];
   }
+
+  ///////////////////////////////////////
+  // Workarround T27883. See https://phabricator.mitk.org/T27883#219473 for more details.
+  // This workarround should be removed as soon as T28262 is solved!
+  if (step + 1 == m_MaximumTimePoints.size() && this->HasCollapsedFinalTimeStep())
+  {
+    result = m_MinimumTimePoints[step] + 1;
+  }
+  // End of workarround for T27883
+  //////////////////////////////////////
+
   return result;
 };
 
@@ -89,7 +106,8 @@ mitk::TimeBounds mitk::ArbitraryTimeGeometry::GetTimeBounds(TimeStepType step) c
 
 bool mitk::ArbitraryTimeGeometry::IsValidTimePoint(TimePointType timePoint) const
 {
-  return this->GetMinimumTimePoint() <= timePoint && timePoint < this->GetMaximumTimePoint();
+  return this->GetMinimumTimePoint() <= timePoint &&
+    (timePoint < this->GetMaximumTimePoint() || (this->HasCollapsedFinalTimeStep() && timePoint <= this->GetMaximumTimePoint()));
 }
 
 bool mitk::ArbitraryTimeGeometry::IsValidTimeStep(TimeStepType timeStep) const
@@ -117,10 +135,18 @@ mitk::TimeStepType mitk::ArbitraryTimeGeometry::TimePointToTimeStep(TimePointTyp
   {
     for (auto pos = m_MaximumTimePoints.cbegin(); pos != m_MaximumTimePoints.cend(); ++pos)
     {
-      if (timePoint < *pos)
+      ///////////////////////////////////////
+      // Workarround T27883. See https://phabricator.mitk.org/T27883#219473 for more details.
+      // The part ("+1.") inline marked as workarround should be removed as soon as T28262 is solved!
+      if (timePoint < *pos
+          || (pos == std::prev(m_MaximumTimePoints.cend())
+              && timePoint <= *pos +1//<- +1 is the workarround
+              && this->HasCollapsedFinalTimeStep()))
       {
         break;
       }
+      // End of workarround for T27883
+      //////////////////////////////////////
 
       ++result;
     }
@@ -291,4 +317,28 @@ void mitk::ArbitraryTimeGeometry::PrintSelf(std::ostream &os, itk::Indent indent
   {
     os << indent.GetNextIndent() << "Step " << i << ": " << m_MaximumTimePoints[i] << " ms" << std::endl;
   }
+  ///////////////////////////////////////
+  // Workarround T27883. See https://phabricator.mitk.org/T27883#219473 for more details.
+  // This workarround should be removed as soon as T28262 is solved!
+  if (this->HasCollapsedFinalTimeStep())
+  {
+    os << indent << "Caution: This time geometry has a collapsed finale time step." << std::endl;
+    os << indent << "         Most likely reason is that no duration could be deduced from the original data" << std::endl;
+    os << indent << "         (e.g. DICOM dynamic series stored as single frame images)." << std::endl;
+    os << indent << "         Currently we expand it by 1 ms (see T27883 for more details)." << std::endl;
+  }
+  // End of workarround for T27883
+  //////////////////////////////////////
+}
+
+bool mitk::ArbitraryTimeGeometry::HasCollapsedFinalTimeStep() const
+{
+  bool result = false;
+
+  if (!m_MaximumTimePoints.empty() && !m_MinimumTimePoints.empty())
+  {
+    result = m_MinimumTimePoints.back() == m_MaximumTimePoints.back();
+  }
+
+  return result;
 }

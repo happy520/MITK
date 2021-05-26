@@ -199,7 +199,7 @@ namespace mitk
     //## Call this method to re-initialize the renderer to the current DataStorage
     //## (e.g. after loading an additional dataset), to ensure that the view is
     //## aligned correctly.
-    //## \warn This is not implemented yet.
+    //## \warning This is not implemented yet.
     virtual bool SetWorldGeometryToDataStorageBounds() { return false; }
     //##Documentation
     //## @brief Set/Get m_Slice which defines together with m_TimeStep the 2D geometry
@@ -226,7 +226,7 @@ namespace mitk
       //## Returns -1 or mitk::BaseData::m_TimeSteps if there
       //## is no data at the current time.
       //## \sa GetTimeStep, m_TimeStep
-      int GetTimeStep(const BaseData *data) const;
+      TimeStepType GetTimeStep(const BaseData *data) const;
 
     //##Documentation
     //## @brief Get the time in ms of the currently displayed content
@@ -308,7 +308,7 @@ namespace mitk
 
       //##Documentation
       //## @brief Set the MapperSlotId to use.
-      itkSetMacro(MapperID, MapperSlotId);
+      virtual void SetMapperID(MapperSlotId id);
 
         virtual int *GetSize() const;
     virtual int *GetViewportSize() const;

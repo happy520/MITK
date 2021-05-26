@@ -64,7 +64,7 @@ found in the LICENSE file.
 #include <iostream>
 
 
-const std::string PETDynamicView::VIEW_ID = "org.mitk.gui.qt.pharmacokinetics.pet";
+const std::string PETDynamicView::VIEW_ID = "org.mitk.views.pharmacokinetics.pet";
 
 inline double convertToDouble(const std::string& data)
 {
@@ -567,7 +567,7 @@ void PETDynamicView::GenerateModelFit_PixelBased(
   if (m_selectedMask.IsNotNull())
   {
     fitGenerator->SetMask(m_selectedMask);
-    roiUID = mitk::EnsureModelFitUID(this->m_selectedMaskNode);
+    roiUID = m_selectedMask->GetUID();
   }
 
   fitGenerator->SetDynamicImage(this->m_selectedImage);
@@ -639,7 +639,11 @@ void PETDynamicView::GenerateModelFit_ROIBased(
 
   generator = fitGenerator.GetPointer();
 
-  std::string roiUID = mitk::EnsureModelFitUID(this->m_selectedMaskNode);
+  std::string roiUID = "";
+  if (m_selectedMask.IsNotNull())
+  {
+    roiUID = m_selectedMask->GetUID();
+  }
 
   //Create model info
   modelFitInfo = mitk::modelFit::CreateFitInfoFromModelParameterizer(modelParameterizer,

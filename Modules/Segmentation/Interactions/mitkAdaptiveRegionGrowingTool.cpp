@@ -38,17 +38,20 @@ mitk::AdaptiveRegionGrowingTool::~AdaptiveRegionGrowingTool()
 {
 }
 
-bool mitk::AdaptiveRegionGrowingTool::CanHandle(BaseData *referenceData) const
+bool mitk::AdaptiveRegionGrowingTool::CanHandle(const BaseData* referenceData, const BaseData* /*workingData*/) const
 {
   if (referenceData == nullptr)
     return false;
 
-  auto *image = dynamic_cast<Image *>(referenceData);
+  auto *image = dynamic_cast<const Image *>(referenceData);
 
   if (image == nullptr)
     return false;
 
   if (image->GetDimension() < 3)
+    return false;
+
+  if (image->GetTimeSteps() > 1) //release quickfix for T28275
     return false;
 
   return true;

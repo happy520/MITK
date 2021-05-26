@@ -62,16 +62,15 @@ namespace mitk
 
     typedef std::vector<ContourPositionInformation> ContourPositionInformationList;
     typedef std::vector<ContourPositionInformationList> ContourPositionInformationVec2D;
-    // typedef std::map<mitk::Image*, ContourPositionInformationList> ContourListMap;
     typedef std::map<mitk::Image *, ContourPositionInformationVec2D> ContourListMap;
 
     static SurfaceInterpolationController *GetInstance();
 
-    void SetCurrentTimeStep(unsigned int ts)
+    void SetCurrentTimePoint(TimePointType tp)
     {
-      if (m_CurrentTimeStep != ts)
+      if (m_CurrentTimePoint != tp)
       {
-        m_CurrentTimeStep = ts;
+        m_CurrentTimePoint = tp;
 
         if (m_SelectedSegmentation)
         {
@@ -80,7 +79,8 @@ namespace mitk
       }
     };
 
-    unsigned int GetCurrentTimeStep() { return m_CurrentTimeStep; };
+    TimePointType GetCurrentTimePoint() const { return m_CurrentTimePoint; };
+
     /**
      * @brief Adds a new extracted contour to the list
      * @param newContour the contour to be added. If a contour at that position
@@ -104,7 +104,7 @@ namespace mitk
 
     /**
     * @brief Returns the contour for a given plane for the current selected segmenation
-    * @param ontourInfo the contour which should be returned
+    * @param contourInfo the contour which should be returned
     * @return the contour as an mitk::Surface. If no contour is available at the give position nullptr is returned
     */
     const mitk::Surface *GetContour(ContourPositionInformation contourInfo);
@@ -159,7 +159,7 @@ namespace mitk
 
     /**
      * Sets the current list of contourpoints which is used for the surface interpolation
-     * @param segmentation The current selected segmentation
+     * @param currentSegmentationImage The current selected segmentation
      */
     void SetCurrentInterpolationSession(mitk::Image::Pointer currentSegmentationImage);
 
@@ -244,7 +244,7 @@ namespace mitk
 
     std::map<mitk::Image *, unsigned long> m_SegmentationObserverTags;
 
-    unsigned int m_CurrentTimeStep;
+    mitk::TimePointType m_CurrentTimePoint;
   };
 }
 #endif

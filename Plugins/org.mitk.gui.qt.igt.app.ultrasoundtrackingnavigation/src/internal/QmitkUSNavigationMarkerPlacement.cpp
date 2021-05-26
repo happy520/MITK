@@ -224,7 +224,7 @@ void QmitkUSNavigationMarkerPlacement::ReInitializeSettingsNodesAndImageStream()
 
 void QmitkUSNavigationMarkerPlacement::OnGetCursorPosition()
 {
-  mitk::Point3D centroid = this->GetRenderWindowPart()->GetSelectedPosition();
+  auto centroid = this->GetRenderWindowPart(mitk::WorkbenchUtil::OPEN)->GetSelectedPosition();
   ui->m_CtToUsRegistrationWidget->OnCalculateTRE(centroid);
 }
 
@@ -320,8 +320,8 @@ void QmitkUSNavigationMarkerPlacement::OnInitializeNavigation()
     m_ToolVisualizationFilter->SetRepresentationObject(0, m_InstrumentNode->GetData()); //caution: currently hard coded that instrument has id 0
     //set dummy objects to avoid spamming of console
     mitk::Surface::Pointer dummyObject = mitk::Surface::New();
-    m_ToolVisualizationFilter->SetRepresentationObject(1, dummyObject);
-    m_ToolVisualizationFilter->SetRepresentationObject(2, dummyObject);
+    m_ToolVisualizationFilter->SetRepresentationObject(1, dummyObject.GetPointer());
+    m_ToolVisualizationFilter->SetRepresentationObject(2, dummyObject.GetPointer());
   }
 }
 

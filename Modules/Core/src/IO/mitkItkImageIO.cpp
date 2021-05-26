@@ -20,6 +20,7 @@ found in the LICENSE file.
 #include <mitkImage.h>
 #include <mitkImageReadAccessor.h>
 #include <mitkLocaleSwitch.h>
+#include <mitkUIDManipulator.h>
 
 #include <itkImage.h>
 #include <itkImageFileReader.h>
@@ -35,6 +36,7 @@ namespace mitk
   const char *const PROPERTY_NAME_TIMEGEOMETRY_TIMEPOINTS = "org.mitk.timegeometry.timepoints";
   const char *const PROPERTY_KEY_TIMEGEOMETRY_TYPE = "org_mitk_timegeometry_type";
   const char *const PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS = "org_mitk_timegeometry_timepoints";
+  const char* const PROPERTY_KEY_UID = "org_mitk_uid";
 
   ItkImageIO::ItkImageIO(const ItkImageIO &other)
     : AbstractFileIO(other), m_ImageIO(dynamic_cast<itk::ImageIOBase *>(other.m_ImageIO->Clone().GetPointer()))
@@ -215,12 +217,10 @@ namespace mitk
     this->RegisterService();
   }
 
-  /**Helper function that converts the content of a meta data into a time point vector.
-   * If MetaData is not valid or cannot be converted an empty vector is returned.*/
-  std::vector<TimePointType> ConvertMetaDataObjectToTimePointList(const itk::MetaDataObjectBase *data)
+  std::vector<TimePointType> ConvertMetaDataObjectToTimePointList(const itk::MetaDataObjectBase* data)
   {
-    const auto *timeGeometryTimeData =
-      dynamic_cast<const itk::MetaDataObject<std::string> *>(data);
+    const auto* timeGeometryTimeData =
+      dynamic_cast<const itk::MetaDataObject<std::string>*>(data);
     std::vector<TimePointType> result;
 
     if (timeGeometryTimeData)
@@ -237,7 +237,33 @@ namespace mitk
     return result;
   };
 
-  std::vector<BaseData::Pointer> ItkImageIO::Read()
+  itk::MetaDataObjectBase::Pointer ConvertTimePointListToMetaDataObject(const mitk::TimeGeometry* timeGeometry)
+  {
+    std::stringstream stream;
+    stream << timeGeometry->GetTimeBounds(0)[0];
+    const auto maxTimePoints = timeGeometry->CountTimeSteps();
+    for (TimeStepType pos = 0; pos < maxTimePoints; ++pos)
+    {
+      auto timeBounds = timeGeometry->GetTimeBounds(pos);
+
+      ///////////////////////////////////////
+      // Workarround T27883. See https://phabricator.mitk.org/T27883#219473 for more details.
+      // This workarround should be removed as soon as T28262 is solved!
+      if (pos + 1 == maxTimePoints && timeBounds[0]==timeBounds[1])
+      {
+        timeBounds[1] = timeBounds[0] + 1.;
+      }
+      // End of workarround for T27883
+      //////////////////////////////////////
+
+      stream << " " << timeBounds[1];
+    }
+    auto result = itk::MetaDataObject<std::string>::New();
+    result->SetMetaDataObjectValue(stream.str());
+    return result.GetPointer();
+  };
+
+  std::vector<BaseData::Pointer> ItkImageIO::DoRead()
   {
     std::vector<BaseData::Pointer> result;
     mitk::LocaleSwitch localeSwitch("C");
@@ -361,7 +387,7 @@ namespace mitk
 
       if (timeGeometryTypeData->GetMetaDataObjectValue() == ArbitraryTimeGeometry::GetStaticNameOfClass())
       {
-        MITK_INFO << "used time geometry: " << ArbitraryTimeGeometry::GetStaticNameOfClass() << std::endl;
+        MITK_INFO << "used time geometry: " << ArbitraryTimeGeometry::GetStaticNameOfClass();
         typedef std::vector<TimePointType> TimePointVector;
         TimePointVector timePoints;
 
@@ -374,11 +400,14 @@ namespace mitk
           timePoints = ConvertMetaDataObjectToTimePointList(dictionary.Get(PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS));
         }
 
-        if (timePoints.size() - 1 != image->GetDimension(3))
+        if (timePoints.empty())
+        {
+          MITK_ERROR << "Stored timepoints are empty. Meta information seems to bee invalid. Switch to ProportionalTimeGeometry fallback";
+        }
+        else if (timePoints.size() - 1 != image->GetDimension(3))
         {
           MITK_ERROR << "Stored timepoints (" << timePoints.size() - 1 << ") and size of image time dimension ("
-                     << image->GetDimension(3) << ") do not match. Switch to ProportionalTimeGeometry fallback"
-                     << std::endl;
+                     << image->GetDimension(3) << ") do not match. Switch to ProportionalTimeGeometry fallback";
         }
         else
         {
@@ -398,7 +427,7 @@ namespace mitk
 
     if (timeGeometry.IsNull())
     { // Fallback. If no other valid time geometry has been created, create a ProportionalTimeGeometry
-      MITK_INFO << "used time geometry: " << ProportionalTimeGeometry::GetStaticNameOfClass() << std::endl;
+      MITK_INFO << "used time geometry: " << ProportionalTimeGeometry::GetStaticNameOfClass();
       ProportionalTimeGeometry::Pointer propTimeGeometry = ProportionalTimeGeometry::New();
       propTimeGeometry->Initialize(slicedGeometry, image->GetDimension(3));
       timeGeometry = propTimeGeometry;
@@ -407,7 +436,7 @@ namespace mitk
     image->SetTimeGeometry(timeGeometry);
 
     buffer = nullptr;
-    MITK_INFO << "number of image components: " << image->GetPixelType().GetNumberOfComponents() << std::endl;
+    MITK_INFO << "number of image components: " << image->GetPixelType().GetNumberOfComponents();
 
     for (auto iter = dictionary.Begin(), iterEnd = dictionary.End(); iter != iterEnd;
          ++iter)
@@ -421,9 +450,10 @@ namespace mitk
         std::string mimeTypeName = GetMimeType()->GetName();
 
         // Check if there is already a info for the key and our mime type.
-        IPropertyPersistence::InfoResultType infoList = mitk::CoreServices::GetPropertyPersistence()->GetInfoByKey(key);
+        mitk::CoreServicePointer<IPropertyPersistence> propPersistenceService(mitk::CoreServices::GetPropertyPersistence());
+        IPropertyPersistence::InfoResultType infoList = propPersistenceService->GetInfoByKey(key);
 
-        auto predicate = [mimeTypeName](const PropertyPersistenceInfo::ConstPointer &x) {
+        auto predicate = [&mimeTypeName](const PropertyPersistenceInfo::ConstPointer &x) {
           return x.IsNotNull() && x->GetMimeTypeName() == mimeTypeName;
         };
         auto finding = std::find_if(infoList.begin(), infoList.end(), predicate);
@@ -445,7 +475,7 @@ namespace mitk
         }
         else
         { // we have not found anything suitable so we generate our own info
-          PropertyPersistenceInfo::Pointer newInfo = PropertyPersistenceInfo::New();
+          auto newInfo = PropertyPersistenceInfo::New();
           newInfo->SetNameAndKey(assumedPropertyName, key);
           newInfo->SetMimeTypeName(PropertyPersistenceInfo::ANY_MIMETYPE_NAME());
           info = newInfo;
@@ -455,6 +485,12 @@ namespace mitk
           dynamic_cast<itk::MetaDataObject<std::string> *>(iter->second.GetPointer())->GetMetaDataObjectValue();
 
         mitk::BaseProperty::Pointer loadedProp = info->GetDeserializationFunction()(value);
+
+        if (loadedProp.IsNull())
+        {
+          MITK_ERROR << "Property cannot be correctly deserialized and is skipped. Check if data format is valid. Problematic property value string: \"" << value << "\"; Property info used to deserialized: " << info;
+          break;
+        }
 
         image->SetProperty(assumedPropertyName.c_str(), loadedProp);
 
@@ -477,12 +513,23 @@ namespace mitk
 
         if (!isDefaultKey)
         {
-          mitk::CoreServices::GetPropertyPersistence()->AddInfo(info);
+          propPersistenceService->AddInfo(info);
         }
       }
     }
 
-    MITK_INFO << "...finished!" << std::endl;
+    // Handle UID
+    if (dictionary.HasKey(PROPERTY_KEY_UID))
+    {
+      itk::MetaDataObject<std::string>::ConstPointer uidData = dynamic_cast<const itk::MetaDataObject<std::string>*>(dictionary.Get(PROPERTY_KEY_UID));
+      if (uidData.IsNotNull())
+      {
+        mitk::UIDManipulator uidManipulator(image);
+        uidManipulator.SetUID(uidData->GetMetaDataObjectValue());
+      }
+    }
+
+    MITK_INFO << "...finished!";
 
     result.push_back(image.GetPointer());
     return result;
@@ -613,16 +660,8 @@ namespace mitk
                                               PROPERTY_KEY_TIMEGEOMETRY_TYPE,
                                               ArbitraryTimeGeometry::GetStaticNameOfClass());
 
-        std::stringstream stream;
-        stream << arbitraryTG->GetTimeBounds(0)[0];
-        for (TimeStepType pos = 0; pos < arbitraryTG->CountTimeSteps(); ++pos)
-        {
-          stream << " " << arbitraryTG->GetTimeBounds(pos)[1];
-        }
-        std::string data = stream.str();
-
-        itk::EncapsulateMetaData<std::string>(
-          m_ImageIO->GetMetaDataDictionary(), PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS, data);
+        auto metaTimePoints = ConvertTimePointListToMetaDataObject(arbitraryTG);
+        m_ImageIO->GetMetaDataDictionary().Set(PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS, metaTimePoints);
       }
 
       // Handle properties
@@ -630,15 +669,27 @@ namespace mitk
 
       for (const auto &property : *imagePropertyList->GetMap())
       {
-        IPropertyPersistence::InfoResultType infoList =
-          mitk::CoreServices::GetPropertyPersistence()->GetInfo(property.first, GetMimeType()->GetName(), true);
+        mitk::CoreServicePointer<IPropertyPersistence> propPersistenceService(mitk::CoreServices::GetPropertyPersistence());
+        IPropertyPersistence::InfoResultType infoList = propPersistenceService->GetInfo(property.first, GetMimeType()->GetName(), true);
 
         if (infoList.empty())
         {
           continue;
         }
 
-        std::string value = infoList.front()->GetSerializationFunction()(property.second);
+        std::string value = mitk::BaseProperty::VALUE_CANNOT_BE_CONVERTED_TO_STRING;
+        try
+        {
+          value = infoList.front()->GetSerializationFunction()(property.second);
+        }
+        catch (const std::exception& e)
+        {
+          MITK_ERROR << "Error when serializing content of property. This often indicates the use of an out dated reader. Property will not be stored. Skipped property: " << property.first << ". Reason: " << e.what();
+        }
+        catch (...)
+        {
+          MITK_ERROR << "Unkown error when serializing content of property. This often indicates the use of an out dated reader. Property will not be stored. Skipped property: " << property.first;
+        }
 
         if (value == mitk::BaseProperty::VALUE_CANNOT_BE_CONVERTED_TO_STRING)
         {
@@ -649,6 +700,10 @@ namespace mitk
 
         itk::EncapsulateMetaData<std::string>(m_ImageIO->GetMetaDataDictionary(), key, value);
       }
+
+      // Handle UID
+      itk::EncapsulateMetaData<std::string>(m_ImageIO->GetMetaDataDictionary(), PROPERTY_KEY_UID, image->GetUID());
+
       ImageReadAccessor imageAccess(image);
       LocaleSwitch localeSwitch2("C");
       m_ImageIO->Write(imageAccess.GetData());

@@ -205,7 +205,7 @@ protected:
     and calls Interpolate to further process this PlaneGeometry into an interpolation.
 
     \param e is a actually a mitk::SliceNavigationController::GeometrySliceEvent, sent by a SliceNavigationController
-    \param slice the SliceNavigationController
+    \param slicer the SliceNavigationController
         */
   bool TranslateAndInterpolateChangedSlice(const itk::EventObject &e, mitk::SliceNavigationController *slicer);
 
@@ -214,7 +214,7 @@ protected:
     ToolManager)
     should be interpolated. The actual work is then done by our SegmentationInterpolation object.
    */
-  void Interpolate(mitk::PlaneGeometry *plane, unsigned int timeStep, mitk::SliceNavigationController *slicer);
+  void Interpolate(mitk::PlaneGeometry *plane, mitk::TimePointType timePoint, mitk::SliceNavigationController *slicer);
 
   // void InterpolateSurface();
 
@@ -256,7 +256,8 @@ private:
   QPushButton *m_BtnApplyForAllSlices2D;
   QPushButton *m_BtnApply3D;
 
-  QPushButton *m_BtnSuggestPlane;
+  // T28261
+  // QPushButton *m_BtnSuggestPlane;
 
   QCheckBox *m_ChkShowPositionNodes;
   QPushButton *m_BtnReinit3DInterpolation;
@@ -270,7 +271,7 @@ private:
   mitk::SliceNavigationController *m_LastSNC;
   unsigned int m_LastSliceIndex;
 
-  QHash<mitk::SliceNavigationController *, unsigned int> m_TimeStep;
+  QHash<mitk::SliceNavigationController *, mitk::TimePointType> m_TimePoints;
 
   bool m_2DInterpolationEnabled;
   bool m_3DInterpolationEnabled;

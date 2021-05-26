@@ -34,7 +34,7 @@ found in the LICENSE file.
 #include "QmitkRenderWindowMenu.h"
 
 QmitkRenderWindow::QmitkRenderWindow(QWidget *parent, const QString &name, mitk::VtkPropRenderer *)
-  : QVTKOpenGLWidget(parent)
+  : QVTKOpenGLNativeWidget(parent)
   , m_ResendQtEvents(true)
   , m_MenuWidget(nullptr)
   , m_MenuWidgetActivated(false)
@@ -44,7 +44,7 @@ QmitkRenderWindow::QmitkRenderWindow(QWidget *parent, const QString &name, mitk:
   m_InternalRenderWindow->SetMultiSamples(0);
   m_InternalRenderWindow->SetAlphaBitPlanes(0);
 
-  SetRenderWindow(m_InternalRenderWindow);
+  setRenderWindow(m_InternalRenderWindow);
 
   Initialize(name.toStdString().c_str());
 
@@ -85,12 +85,22 @@ QmitkRenderWindowMenu::LayoutIndex QmitkRenderWindow::GetLayoutIndex()
   }
 }
 
-void QmitkRenderWindow::LayoutDesignListChanged(QmitkRenderWindowMenu::LayoutDesign layoutDesign)
+void QmitkRenderWindow::UpdateLayoutDesignList(QmitkRenderWindowMenu::LayoutDesign layoutDesign)
 {
   if (nullptr != m_MenuWidget)
   {
     m_MenuWidget->UpdateLayoutDesignList(layoutDesign);
   }
+}
+
+void QmitkRenderWindow::UpdateCrosshairVisibility(bool visible)
+{
+  m_MenuWidget->UpdateCrosshairVisibility(visible);
+}
+
+void QmitkRenderWindow::UpdateCrosshairRotationMode(int mode)
+{
+  m_MenuWidget->UpdateCrosshairRotationMode(mode);
 }
 
 void QmitkRenderWindow::ActivateMenuWidget(bool state)
@@ -123,7 +133,7 @@ void QmitkRenderWindow::ActivateMenuWidget(bool state)
 
 void QmitkRenderWindow::moveEvent(QMoveEvent *event)
 {
-  QVTKOpenGLWidget::moveEvent(event);
+  QVTKOpenGLNativeWidget::moveEvent(event);
 
   // after a move the overlays need to be positioned
   emit moved();
@@ -131,119 +141,82 @@ void QmitkRenderWindow::moveEvent(QMoveEvent *event)
 
 void QmitkRenderWindow::showEvent(QShowEvent *event)
 {
-  QVTKOpenGLWidget::showEvent(event);
+  QVTKOpenGLNativeWidget::showEvent(event);
 
   // this singleshot is necessary to have the overlays positioned correctly after initial show
   // simple call of moved() is no use here!!
   QTimer::singleShot(0, this, SIGNAL(moved()));
 }
 
-void QmitkRenderWindow::mousePressEvent(QMouseEvent *me)
+bool QmitkRenderWindow::event(QEvent* e)
 {
-  // Get mouse position in vtk display coordinate system. me contains qt display infos...
-  mitk::Point2D displayPos = GetMousePosition(me);
-
-  mitk::MousePressEvent::Pointer mPressEvent =
-    mitk::MousePressEvent::New(m_Renderer, displayPos, GetButtonState(me), GetModifiers(me), GetEventButton(me));
-
-  if (!this->HandleEvent(mPressEvent.GetPointer()))
+  mitk::InteractionEvent::Pointer mitkEvent = nullptr;
+  switch (e->type())
   {
-    QVTKOpenGLWidget::mousePressEvent(me);
+    case QEvent::MouseMove:
+    {
+      auto me = static_cast<QMouseEvent *>(e);
+      mitkEvent = mitk::MouseMoveEvent::New(m_Renderer, GetMousePosition(me), GetButtonState(me), GetModifiers(me));
+      break;
+    }
+    case QEvent::MouseButtonPress:
+    {
+      auto me = static_cast<QMouseEvent *>(e);
+      mitkEvent = mitk::MousePressEvent::New( m_Renderer, GetMousePosition(me), GetButtonState(me), GetModifiers(me), GetEventButton(me));
+      break;
+    }
+    case QEvent::MouseButtonRelease:
+    {
+      auto me = static_cast<QMouseEvent *>(e);
+      mitkEvent = mitk::MouseReleaseEvent::New( m_Renderer, GetMousePosition(me), GetButtonState(me), GetModifiers(me), GetEventButton(me));
+      break;
+    }
+    case QEvent::MouseButtonDblClick:
+    {
+      auto me = static_cast<QMouseEvent *>(e);
+      mitkEvent = mitk::MouseDoubleClickEvent::New( m_Renderer, GetMousePosition(me), GetButtonState(me), GetModifiers(me), GetEventButton(me));
+      break;
+    }
+    case QEvent::Wheel:
+    {
+      auto we = static_cast<QWheelEvent *>(e);
+      mitkEvent = mitk::MouseWheelEvent::New( m_Renderer, GetMousePosition(we), GetButtonState(we), GetModifiers(we), GetDelta(we));
+      break;
+    }
+    case QEvent::KeyPress:
+    {
+      auto ke = static_cast<QKeyEvent*>(e);
+      mitkEvent = mitk::InteractionKeyEvent::New(m_Renderer, GetKeyLetter(ke), GetModifiers(ke));
+      break;
+    }
+    case QEvent::Resize:
+    {
+      if (nullptr != m_MenuWidget)
+        m_MenuWidget->MoveWidgetToCorrectPos();
+    }
+    default:
+    {
+      break;
+    }
   }
 
-  if (m_ResendQtEvents)
+  if (mitkEvent != nullptr)
   {
-    me->ignore();
-  }
-}
-
-void QmitkRenderWindow::mouseDoubleClickEvent(QMouseEvent *me)
-{
-  mitk::Point2D displayPos = GetMousePosition(me);
-  mitk::MouseDoubleClickEvent::Pointer mPressEvent =
-    mitk::MouseDoubleClickEvent::New(m_Renderer, displayPos, GetButtonState(me), GetModifiers(me), GetEventButton(me));
-
-  if (!this->HandleEvent(mPressEvent.GetPointer()))
-  {
-    QVTKOpenGLWidget::mousePressEvent(me);
+    if (this->HandleEvent(mitkEvent.GetPointer())) {
+      return m_ResendQtEvents ? false : true;
+    }
   }
 
-  if (m_ResendQtEvents)
-  {
-    me->ignore();
-  }
-}
-
-void QmitkRenderWindow::mouseReleaseEvent(QMouseEvent *me)
-{
-  mitk::Point2D displayPos = GetMousePosition(me);
-  mitk::MouseReleaseEvent::Pointer mReleaseEvent =
-    mitk::MouseReleaseEvent::New(m_Renderer, displayPos, GetButtonState(me), GetModifiers(me), GetEventButton(me));
-
-  if (!this->HandleEvent(mReleaseEvent.GetPointer()))
-  {
-    QVTKOpenGLWidget::mouseReleaseEvent(me);
-  }
-
-  if (m_ResendQtEvents)
-  {
-    me->ignore();
-  }
-}
-
-void QmitkRenderWindow::mouseMoveEvent(QMouseEvent *me)
-{
-  mitk::Point2D displayPos = GetMousePosition(me);
-
-  AdjustRenderWindowMenuVisibility(me->pos());
-
-  mitk::MouseMoveEvent::Pointer mMoveEvent =
-    mitk::MouseMoveEvent::New(m_Renderer, displayPos, GetButtonState(me), GetModifiers(me));
-
-  if (!this->HandleEvent(mMoveEvent.GetPointer()))
-  {
-    QVTKOpenGLWidget::mouseMoveEvent(me);
-  }
-}
-
-void QmitkRenderWindow::wheelEvent(QWheelEvent *we)
-{
-  mitk::Point2D displayPos = GetMousePosition(we);
-  mitk::MouseWheelEvent::Pointer mWheelEvent =
-    mitk::MouseWheelEvent::New(m_Renderer, displayPos, GetButtonState(we), GetModifiers(we), GetDelta(we));
-
-  if (!this->HandleEvent(mWheelEvent.GetPointer()))
-  {
-    QVTKOpenGLWidget::wheelEvent(we);
-  }
-
-  if (m_ResendQtEvents)
-  {
-    we->ignore();
-  }
-}
-
-void QmitkRenderWindow::keyPressEvent(QKeyEvent *ke)
-{
-  mitk::InteractionEvent::ModifierKeys modifiers = GetModifiers(ke);
-  std::string key = GetKeyLetter(ke);
-
-  mitk::InteractionKeyEvent::Pointer keyEvent = mitk::InteractionKeyEvent::New(m_Renderer, key, modifiers);
-  if (!this->HandleEvent(keyEvent.GetPointer()))
-  {
-    QVTKOpenGLWidget::keyPressEvent(ke);
-  }
-
-  if (m_ResendQtEvents)
-  {
-    ke->ignore();
-  }
+  return QVTKOpenGLNativeWidget::event(e);
 }
 
 void QmitkRenderWindow::enterEvent(QEvent *e)
 {
   // TODO implement new event
-  QVTKOpenGLWidget::enterEvent(e);
+  QVTKOpenGLNativeWidget::enterEvent(e);
+
+  if (nullptr != m_MenuWidget)
+    m_MenuWidget->ShowMenu();
 }
 
 void QmitkRenderWindow::leaveEvent(QEvent *e)
@@ -253,17 +226,15 @@ void QmitkRenderWindow::leaveEvent(QEvent *e)
   this->HandleEvent(internalEvent.GetPointer());
 
   if (nullptr != m_MenuWidget)
-  {
-    m_MenuWidget->smoothHide();
-  }
+    m_MenuWidget->HideMenu();
 
-  QVTKOpenGLWidget::leaveEvent(e);
+  QVTKOpenGLNativeWidget::leaveEvent(e);
 }
 
 void QmitkRenderWindow::resizeGL(int w, int h)
 {
-  QVTKOpenGLWidget::resizeGL(w, h);
-  mitk::RenderingManager::GetInstance()->ForceImmediateUpdate(GetRenderWindow());
+  QVTKOpenGLNativeWidget::resizeGL(w, h);
+  mitk::RenderingManager::GetInstance()->ForceImmediateUpdate(renderWindow());
 }
 
 void QmitkRenderWindow::dragEnterEvent(QDragEnterEvent *event)
@@ -280,15 +251,6 @@ void QmitkRenderWindow::dropEvent(QDropEvent *event)
   if (!dataNodeList.empty())
   {
     emit NodesDropped(this, dataNodeList.toVector().toStdVector());
-  }
-}
-
-void QmitkRenderWindow::AdjustRenderWindowMenuVisibility(const QPoint & /*pos*/)
-{
-  if (nullptr != m_MenuWidget)
-  {
-    m_MenuWidget->ShowMenu();
-    m_MenuWidget->MoveWidgetToCorrectPos(1.0f);
   }
 }
 

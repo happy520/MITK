@@ -48,10 +48,10 @@ public:
     auto featureList = featureCalculator->CalculateFeatures(m_IBSI_Phantom_Image_Large, m_IBSI_Phantom_Mask_Large);
 
     std::map<std::string, double> results;
-    for (auto valuePair : featureList)
+    for (const auto &valuePair : featureList)
     {
-      MITK_INFO << valuePair.first << " : " << valuePair.second;
-      results[valuePair.first] = valuePair.second;
+      MITK_INFO << mitk::AbstractGlobalImageFeature::GenerateLegacyFeatureNameWOEncoding(valuePair.first) << " : " << valuePair.second;
+      results[mitk::AbstractGlobalImageFeature::GenerateLegacyFeatureNameWOEncoding(valuePair.first)] = valuePair.second;
     }
     CPPUNIT_ASSERT_EQUAL_MESSAGE("Volume Statistic should calculate 33 features.", std::size_t(38), featureList.size());
 

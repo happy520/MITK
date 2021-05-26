@@ -18,7 +18,7 @@ found in the LICENSE file.
 // Blueberry
 #include <berryIPartListener.h>
 
-// mitk DICOMReader module
+// mitk DICOM module
 #include <mitkDICOMTag.h>
 #include <mitkDICOMProperty.h>
 
@@ -124,7 +124,7 @@ private:
   /** @brief Indicates if the currently selected position is valid for the currently selected data.*/
   bool m_ValidSelectedPosition;
 
-  unsigned int m_SelectedTimeStep;
+  mitk::TimePointType m_SelectedTimePoint;
 
   itk::IndexValueType m_CurrentSelectedZSlice;
 

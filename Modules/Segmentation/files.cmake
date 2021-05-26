@@ -26,14 +26,15 @@ set(CPP_FILES
   Controllers/mitkSegmentationModuleActivator.cpp
   Controllers/mitkToolManagerProvider.cpp
   DataManagement/mitkContour.cpp
-  #DataManagement/mitkContourElement.cpp
-  #DataManagement/mitkContourModel.cpp
   DataManagement/mitkContourSet.cpp
   DataManagement/mitkExtrudedContour.cpp
   Interactions/mitkAdaptiveRegionGrowingTool.cpp
   Interactions/mitkAddContourTool.cpp
   Interactions/mitkAutoCropTool.cpp
   Interactions/mitkAutoSegmentationTool.cpp
+  Interactions/mitkAutoSegmentationWithPreviewTool.cpp
+  Interactions/mitkAutoMLSegmentationWithPreviewTool.cpp
+  Interactions/mitkBinaryThresholdBaseTool.cpp
   Interactions/mitkBinaryThresholdTool.cpp
   Interactions/mitkBinaryThresholdULTool.cpp
   Interactions/mitkCalculateGrayValueStatisticsTool.cpp
@@ -42,11 +43,11 @@ set(CPP_FILES
   Interactions/mitkContourModelLiveWireInteractor.cpp
   Interactions/mitkLiveWireTool2D.cpp
   Interactions/mitkContourTool.cpp
-  Interactions/mitkCorrectorTool2D.cpp
   Interactions/mitkCreateSurfaceTool.cpp
   Interactions/mitkDrawPaintbrushTool.cpp
   Interactions/mitkErasePaintbrushTool.cpp
   Interactions/mitkEraseRegionTool.cpp
+  Interactions/mitkFastMarchingBaseTool.cpp
   Interactions/mitkFastMarchingTool.cpp
   Interactions/mitkFastMarchingTool3D.cpp
   Interactions/mitkFeedbackContourTool.cpp
@@ -64,14 +65,7 @@ set(CPP_FILES
   Interactions/mitkWatershedTool.cpp
   Interactions/mitkPickingTool.cpp
   Interactions/mitkSegmentationInteractor.cpp #SO
-  #IO/mitkContourModelIOFactory.cpp
-  #IO/mitkContourModelReader.cpp
-  #IO/mitkContourModelWriter.cpp
-  #IO/mitkContourModelWriterFactory.cpp
   Rendering/mitkContourMapper2D.cpp
-  #Rendering/mitkContourModelGLMapper2D.cpp
-  #Rendering/mitkContourModelMapper2D.cpp
-  #Rendering/mitkContourModelMapper3D.cpp
   Rendering/mitkContourSetMapper2D.cpp
   Rendering/mitkContourSetVtkMapper3D.cpp
   Rendering/mitkContourVtkMapper3D.cpp
@@ -85,8 +79,6 @@ set(CPP_FILES
 set(RESOURCE_FILES
   Add_48x48.png
   Add_Cursor_32x32.png
-  Correction_48x48.png
-  Correction_Cursor_32x32.png
   Erase_48x48.png
   Erase_Cursor_32x32.png
   FastMarching_48x48.png

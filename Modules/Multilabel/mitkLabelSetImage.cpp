@@ -466,9 +466,16 @@ void mitk::LabelSetImage::EraseLabel(PixelType pixelValue, unsigned int layer)
 {
   try
   {
-    AccessByItk_2(this, EraseLabelProcessing, pixelValue, layer);
+    if (4 == this->GetDimension())
+    {
+      AccessFixedDimensionByItk_2(this, EraseLabelProcessing, 4, pixelValue, layer);
+    }
+    else
+    {
+      AccessByItk_2(this, EraseLabelProcessing, pixelValue, layer);
+    }
   }
-  catch (itk::ExceptionObject &e)
+  catch (const itk::ExceptionObject &e)
   {
     mitkThrow() << e.GetDescription();
   }
@@ -480,7 +487,15 @@ mitk::Label *mitk::LabelSetImage::GetActiveLabel(unsigned int layer)
   if (m_LabelSetContainer.size() <= layer)
     return nullptr;
   else
-    return m_LabelSetContainer[layer]->GetActiveLabel();;
+    return m_LabelSetContainer[layer]->GetActiveLabel();
+}
+
+const mitk::Label* mitk::LabelSetImage::GetActiveLabel(unsigned int layer) const
+{
+  if (m_LabelSetContainer.size() <= layer)
+    return nullptr;
+  else
+    return m_LabelSetContainer[layer]->GetActiveLabel();
 }
 
 mitk::Label *mitk::LabelSetImage::GetLabel(PixelType pixelValue, unsigned int layer) const
@@ -508,6 +523,14 @@ const mitk::LabelSet *mitk::LabelSetImage::GetLabelSet(unsigned int layer) const
 }
 
 mitk::LabelSet *mitk::LabelSetImage::GetActiveLabelSet()
+{
+  if (m_LabelSetContainer.size() == 0)
+    return nullptr;
+  else
+    return m_LabelSetContainer[GetActiveLayer()].GetPointer();
+}
+
+const mitk::LabelSet* mitk::LabelSetImage::GetActiveLabelSet() const
 {
   if (m_LabelSetContainer.size() == 0)
     return nullptr;

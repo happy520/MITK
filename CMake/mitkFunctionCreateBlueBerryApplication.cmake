@@ -88,10 +88,10 @@ else()
   add_executable(${_APP_NAME} MACOSX_BUNDLE WIN32 ${_APP_SOURCES} ${WINDOWS_ICON_RESOURCE_FILE})
 endif()
 
-if(NOT CMAKE_CURRENT_SOURCE_DIR MATCHES "^${CMAKE_SOURCE_DIR}.*")
-  foreach(MITK_EXTENSION_DIR ${MITK_EXTENSION_DIRS})
-    if(CMAKE_CURRENT_SOURCE_DIR MATCHES "^${MITK_EXTENSION_DIR}.*")
-      get_filename_component(MITK_EXTENSION_ROOT_FOLDER ${MITK_EXTENSION_DIR} NAME)
+if(NOT CMAKE_CURRENT_SOURCE_DIR MATCHES "^${CMAKE_SOURCE_DIR}/.*")
+  foreach(MITK_EXTENSION_DIR ${MITK_ABSOLUTE_EXTENSION_DIRS})
+    if("${CMAKE_CURRENT_SOURCE_DIR}/" MATCHES "^${MITK_EXTENSION_DIR}/.*")
+      get_filename_component(MITK_EXTENSION_ROOT_FOLDER "${MITK_EXTENSION_DIR}" NAME)
       set_property(TARGET ${_APP_NAME} PROPERTY FOLDER "${MITK_EXTENSION_ROOT_FOLDER}/Applications")
       break()
     endif()
@@ -214,7 +214,9 @@ if(NOT _APP_NO_INSTALL)
 
   # On Linux, create a shell script to start a relocatable application
   if(UNIX AND NOT APPLE)
-    install(PROGRAMS "${MITK_SOURCE_DIR}/CMake/RunInstalledApp.sh" DESTINATION "." RENAME ${_APP_NAME}.sh)
+    install(PROGRAMS "${MITK_SOURCE_DIR}/CMake/RunInstalledApp.sh" DESTINATION "." RENAME "${_APP_NAME}.sh")
+  elseif(WIN32)
+    install(PROGRAMS "${MITK_SOURCE_DIR}/CMake/RunInstalledWin32App.bat" DESTINATION "." RENAME "${_APP_NAME}.bat")
   endif()
 
   # Tell cpack the executables that you want in the start menu as links

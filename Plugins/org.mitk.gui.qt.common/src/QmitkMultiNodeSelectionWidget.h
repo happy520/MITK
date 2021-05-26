@@ -10,7 +10,6 @@ found in the LICENSE file.
 
 ============================================================================*/
 
-
 #ifndef QMITK_MULTI_NODE_SELECTION_WIDGET_H
 #define QMITK_MULTI_NODE_SELECTION_WIDGET_H
 
@@ -30,8 +29,8 @@ class QmitkAbstractDataStorageModel;
 class QAbstractItemVew;
 
 /**
-* \class QmitkMultiNodeSelectionWidget
-* \brief Widget that allows to perform and represents a multiple node selection.
+* @class QmitkMultiNodeSelectionWidget
+* @brief Widget that allows to perform and represents a multiple node selection.
 */
 class MITK_QT_COMMON QmitkMultiNodeSelectionWidget : public QmitkAbstractNodeSelectionWidget
 {
@@ -42,46 +41,41 @@ public:
 
   using NodeList = QmitkAbstractNodeSelectionWidget::NodeList;
 
-  NodeList GetSelectedNodes() const;
-
-  /**Helper function that is used to check the given selection for consistency.
-   Returning an empty string assumes that everything is alright and the selection
-   is valid. If the string is not empty, the content of the string will be used
-   as error message in the overlay to indicate the problem.*/
+  /**
+  * @brief Helper function that is used to check the given selection for consistency.
+  *        Returning an empty string assumes that everything is alright and the selection
+  *        is valid. If the string is not empty, the content of the string will be used
+  *        as error message in the overlay to indicate the problem.
+  */
   using SelectionCheckFunctionType = std::function<std::string(const NodeList &)>;
-  /**A selection check function can be set. If set the widget uses this function to
-   check the made/set selection. If the selection is valid, everything is fine.
-   If selection is indicated as invalid, it will not be communicated by the widget
-   (no signal emission.*/
+  /**
+  * @brief A selection check function can be set. If set the widget uses this function to
+  *        check the made/set selection. If the selection is valid, everything is fine.
+  *        If selection is indicated as invalid, it will not be communicated by the widget
+  *        (no signal emission).
+  */
   void SetSelectionCheckFunction(const SelectionCheckFunctionType &checkFunction);
 
 public Q_SLOTS:
-  void SetSelectOnlyVisibleNodes(bool selectOnlyVisibleNodes) override;
-  void SetCurrentSelection(NodeList selectedNodes) override;
   void OnEditSelection();
 
 protected Q_SLOTS:
   void OnClearSelection(const mitk::DataNode* node);
 
 protected:
-  NodeList CompileEmitSelection() const;
-
   void changeEvent(QEvent *event) override;
 
   void UpdateInfo() override;
-  virtual void UpdateList();
+  void OnInternalSelectionChanged() override;
 
-  void OnNodePredicateChanged(const mitk::NodePredicateBase* newPredicate) override;
-  void OnDataStorageChanged() override;
-  void NodeRemovedFromStorage(const mitk::DataNode* node) override;
-
-  NodeList m_CurrentSelection;
+  bool AllowEmissionOfSelection(const NodeList& emissionCandidates) const override;
 
   QmitkSimpleTextOverlayWidget* m_Overlay;
 
   SelectionCheckFunctionType m_CheckFunction;
-  std::string m_CheckResponse;
+  mutable std::string m_CheckResponse;
 
   Ui_QmitkMultiNodeSelectionWidget m_Controls;
 };
-#endif // QmitkMultiNodeSelectionWidget_H
+
+#endif // QMITK_MULTI_NODE_SELECTION_WIDGET_H

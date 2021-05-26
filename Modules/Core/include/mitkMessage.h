@@ -414,16 +414,8 @@ namespace mitk
     /**
      * \brief List of listeners.
      *
-     * This is declared mutable for a reason: Imagine an object that sends out notifications, e.g.
-     *
-     * \code
-  class Database {
-  public:
-    Message Modified;
-  };
-     * \endcode
-     *
-     * Now imaginge someone gets a <tt>const Database</tt> object, because he/she should not write to the
+     * This is declared mutable for a reason: Imagine an object that sends out notifications and
+     * someone gets a <tt>const Database</tt> object, because he/she should not write to the
      * database. He/she should anyway be able to register for notifications about changes in the database
      * -- this is why AddListener and RemoveListener are declared <tt>const</tt>. m_Listeners must be
      *  mutable so that AddListener and RemoveListener can modify it regardless of the object's constness.
@@ -455,114 +447,6 @@ namespace mitk
    * To conveniently add methods for registering/unregistering observers
    * to Message variables of your class, you can use the mitkNewMessageMacro
    * macros.
-   *
-   * Here is an example how to use the macros and templates:
-   *
-   * \code
-   *
-   * // An object to be send around
-   * class Law
-   * {
-   *   private:
-   *     std::string m_Description;
-   *
-   *   public:
-   *
-   *     Law(const std::string law) : m_Description(law)
-   *     { }
-   *
-   *     std::string GetDescription() const
-   *     {
-   *       return m_Description;
-   *     }
-   * };
-   *
-   * // The NewtonMachine will issue specific events
-   * class NewtonMachine
-   * {
-   *   mitkNewMessageMacro(AnalysisStarted);
-   *   mitkNewMessage1Macro(AnalysisStopped, bool);
-   *   mitkNewMessage1Macro(LawDiscovered, const Law&);
-   *
-   *   public:
-   *
-   *     void StartAnalysis()
-   *     {
-   *       // send the "started" signal
-   *       m_AnalysisStartedMessage();
-   *
-   *       // we found a new law of nature by creating one :-)
-   *       Law massLaw("F=ma");
-   *       m_LawDiscoveredMessage(massLaw);
-   *     }
-   *
-   *     void StopAnalysis()
-   *     {
-   *       // send the "stop" message with false, indicating
-   *       // that no error occured
-   *       m_AnalysisStoppedMessage(false);
-   *     }
-   * };
-   *
-   * class Observer
-   * {
-   *   private:
-   *
-   *     NewtonMachine* m_Machine;
-   *
-   *   public:
-   *
-   *     Observer(NewtonMachine* machine) : m_Machine(machine)
-   *     {
-   *       // Add "observers", i.e. function pointers to the machine
-   *       m_Machine->AddAnalysisStartedListener(
-   *         ::mitk::MessageDelegate<Observer>(this, &Observer::MachineStarted));
-   *       m_Machine->AddAnalysisStoppedListener(
-   *         ::mitk::MessageDelegate1<Observer, bool>(this, &Observer::MachineStopped));
-   *       m_Machine->AddLawDiscoveredListener(
-   *         ::mitk::MessageDelegate1<Observer, const Law&>(this, &Observer::LawDiscovered));
-   *      }
-   *
-   *     ~Observer()
-   *     {
-   *       // Always remove your observers when finished
-   *       m_Machine->RemoveAnalysisStartedListener(
-   *         ::mitk::MessagDelegate<Observer>(this, &Observer::MachineStarted));
-   *       m_Machine->RemoveAnalysisStoppedListener(
-   *         ::mitk::MessageDelegate1<Observer, bool>(this, &Observer::MachineStopped));
-   *       m_Machine->RemoveLawDiscoveredListener(
-   *         ::mitk::MessageDelegate1<Observer, const Law&>(this, &Observer::LawDiscovered));
-   *      }
-   *
-   *      void MachineStarted()
-   *      {
-   *        std::cout << "Observed machine has started" << std::endl;
-   *      }
-   *
-   *      void MachineStopped(bool error)
-   *      {
-   *        std::cout << "Observed machine stopped " << (error ? "with an error" : "") << std::endl;
-   *      }
-   *
-   *      void LawDiscovered(const Law& law)
-   *      {
-   *        std::cout << "New law of nature discovered: " << law.GetDescription() << std::endl;
-   *      }
-   *  };
-   *
-   *  NewtonMachine newtonMachine;
-   *  Observer observer(&newtonMachine);
-   *
-   *  // This will send two events to registered observers
-   *  newtonMachine.StartAnalysis();
-   *  // This will send one event to registered observers
-   *  newtonMachine.StopAnalysis();
-   *
-   * \endcode
-   *
-   * Another example of how to use these message classes can be
-   * found in the directory Testing, file mitkMessageTest.cpp
-   *
    */
   template <typename A = void>
   class Message : public MessageBase<MessageAbstractDelegate<A>>
@@ -571,7 +455,7 @@ namespace mitk
     typedef MessageBase<MessageAbstractDelegate<A>> Super;
     typedef typename Super::ListenerList ListenerList;
 
-    void Send()
+    void Send() const
     {
       ListenerList listeners;
 
@@ -588,7 +472,7 @@ namespace mitk
       }
     }
 
-    void operator()() { this->Send(); }
+    void operator()() const { this->Send(); }
   };
 
   // message with 1 parameter and return type
@@ -599,7 +483,7 @@ namespace mitk
     typedef MessageBase<MessageAbstractDelegate1<T, A>> Super;
     typedef typename Super::ListenerList ListenerList;
 
-    void Send(T t)
+    void Send(T t) const
     {
       ListenerList listeners;
 
@@ -616,7 +500,7 @@ namespace mitk
       }
     }
 
-    void operator()(T t) { this->Send(t); }
+    void operator() (T t) const { this->Send(t); }
   };
 
   // message with 2 parameters and return type
@@ -627,7 +511,7 @@ namespace mitk
     typedef MessageBase<MessageAbstractDelegate2<T, U, A>> Super;
     typedef typename Super::ListenerList ListenerList;
 
-    void Send(T t, U u)
+    void Send(T t, U u) const
     {
       ListenerList listeners;
 
@@ -644,7 +528,7 @@ namespace mitk
       }
     }
 
-    void operator()(T t, U u) { this->Send(t, u); }
+    void operator()(T t, U u) const { this->Send(t, u); }
   };
 
   // message with 3 parameters and return type
@@ -655,7 +539,7 @@ namespace mitk
     typedef MessageBase<MessageAbstractDelegate3<T, U, V, A>> Super;
     typedef typename Super::ListenerList ListenerList;
 
-    void Send(T t, U u, V v)
+    void Send(T t, U u, V v) const
     {
       ListenerList listeners;
 
@@ -672,7 +556,7 @@ namespace mitk
       }
     }
 
-    void operator()(T t, U u, V v) { this->Send(t, u, v); }
+    void operator()(T t, U u, V v) const { this->Send(t, u, v); }
   };
 
   // message with 4 parameters and return type
@@ -683,7 +567,7 @@ namespace mitk
     typedef MessageBase<MessageAbstractDelegate4<T, U, V, W, A>> Super;
     typedef typename Super::ListenerList ListenerList;
 
-    void Send(T t, U u, V v, W w)
+    void Send(T t, U u, V v, W w) const
     {
       ListenerList listeners;
 
@@ -700,8 +584,113 @@ namespace mitk
       }
     }
 
-    void operator()(T t, U u, V v, W w) { this->Send(t, u, v, w); }
+    void operator()(T t, U u, V v, W w) const { this->Send(t, u, v, w); }
   };
+
+/* Here is an example how to use the macros and templates:
+*
+* // An object to be send around
+* class Law
+* {
+*   private:
+*     std::string m_Description;
+*
+*   public:
+*
+*     Law(const std::string law) : m_Description(law)
+*     { }
+*
+*     std::string GetDescription() const
+*     {
+*       return m_Description;
+*     }
+* };
+*
+* // The NewtonMachine will issue specific events
+* class NewtonMachine
+* {
+*   mitkNewMessageMacro(AnalysisStarted);
+*   mitkNewMessage1Macro(AnalysisStopped, bool);
+*   mitkNewMessage1Macro(LawDiscovered, const Law&);
+*
+*   public:
+*
+*     void StartAnalysis()
+*     {
+*       // send the "started" signal
+*       m_AnalysisStartedMessage();
+*
+*       // we found a new law of nature by creating one :-)
+*       Law massLaw("F=ma");
+*       m_LawDiscoveredMessage(massLaw);
+*     }
+*
+*     void StopAnalysis()
+*     {
+*       // send the "stop" message with false, indicating
+*       // that no error occured
+*       m_AnalysisStoppedMessage(false);
+*     }
+* };
+*
+* class Observer
+* {
+*   private:
+*
+*     NewtonMachine* m_Machine;
+*
+*   public:
+*
+*     Observer(NewtonMachine* machine) : m_Machine(machine)
+*     {
+*       // Add "observers", i.e. function pointers to the machine
+*       m_Machine->AddAnalysisStartedListener(
+*         ::mitk::MessageDelegate<Observer>(this, &Observer::MachineStarted));
+*       m_Machine->AddAnalysisStoppedListener(
+*         ::mitk::MessageDelegate1<Observer, bool>(this, &Observer::MachineStopped));
+*       m_Machine->AddLawDiscoveredListener(
+*         ::mitk::MessageDelegate1<Observer, const Law&>(this, &Observer::LawDiscovered));
+*      }
+*
+*     ~Observer()
+*     {
+*       // Always remove your observers when finished
+*       m_Machine->RemoveAnalysisStartedListener(
+*         ::mitk::MessagDelegate<Observer>(this, &Observer::MachineStarted));
+*       m_Machine->RemoveAnalysisStoppedListener(
+*         ::mitk::MessageDelegate1<Observer, bool>(this, &Observer::MachineStopped));
+*       m_Machine->RemoveLawDiscoveredListener(
+*         ::mitk::MessageDelegate1<Observer, const Law&>(this, &Observer::LawDiscovered));
+*      }
+*
+*      void MachineStarted()
+*      {
+*        std::cout << "Observed machine has started" << std::endl;
+*      }
+*
+*      void MachineStopped(bool error)
+*      {
+*        std::cout << "Observed machine stopped " << (error ? "with an error" : "") << std::endl;
+*      }
+*
+*      void LawDiscovered(const Law& law)
+*      {
+*        std::cout << "New law of nature discovered: " << law.GetDescription() << std::endl;
+*      }
+*  };
+*
+*  NewtonMachine newtonMachine;
+*  Observer observer(&newtonMachine);
+*
+*  // This will send two events to registered observers
+*  newtonMachine.StartAnalysis();
+*  // This will send one event to registered observers
+*  newtonMachine.StopAnalysis();
+*
+* Another example of how to use these message classes can be
+* found in the directory Testing, file mitkMessageTest.cpp
+*
+*/
 
 } // namespace
 

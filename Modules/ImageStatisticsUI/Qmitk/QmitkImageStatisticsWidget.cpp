@@ -56,6 +56,27 @@ void QmitkImageStatisticsWidget::Reset()
   m_Controls.buttonCopyImageStatisticsToClipboard->setEnabled(false);
 }
 
+
+void QmitkImageStatisticsWidget::SetIgnoreZeroValueVoxel(bool _arg)
+{
+  m_imageStatisticsModel->SetIgnoreZeroValueVoxel(_arg);
+}
+
+bool QmitkImageStatisticsWidget::GetIgnoreZeroValueVoxel() const
+{
+  return this->m_imageStatisticsModel->GetIgnoreZeroValueVoxel();
+}
+
+void QmitkImageStatisticsWidget::SetHistogramNBins(unsigned int nbins)
+{
+  m_imageStatisticsModel->SetHistogramNBins(nbins);
+}
+
+unsigned int QmitkImageStatisticsWidget::GetHistogramNBins() const
+{
+  return this->m_imageStatisticsModel->GetHistogramNBins();
+}
+
 void QmitkImageStatisticsWidget::CreateConnections()
 {
 	connect(m_Controls.buttonCopyImageStatisticsToClipboard, &QPushButton::clicked, this, &QmitkImageStatisticsWidget::OnClipboardButtonClicked);
@@ -70,10 +91,12 @@ void QmitkImageStatisticsWidget::OnDataAvailable()
 void QmitkImageStatisticsWidget::OnClipboardButtonClicked()
 {
   QmitkStatisticsModelToStringConverter converter;
-  converter.SetTableModel(m_imageStatisticsModel);
+  converter.SetColumnDelimiter('\t');
+  converter.SetModel(m_imageStatisticsModel);
   converter.SetRootIndex(m_Controls.treeViewStatistics->rootIndex());
   converter.SetIncludeHeaderData(true);
 
   QString clipboardAsString = converter.GetString();
+  QApplication::clipboard()->clear();
   QApplication::clipboard()->setText(clipboardAsString, QClipboard::Clipboard);
 }

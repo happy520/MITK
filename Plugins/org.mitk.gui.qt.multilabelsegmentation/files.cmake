@@ -6,7 +6,6 @@ set(INTERNAL_CPP_FILES
   mitkPluginActivator.cpp
   QmitkMultiLabelSegmentationView.cpp
   QmitkThresholdAction.cpp
-  QmitkAutocropAction.cpp
   QmitkConvertSurfaceToLabelAction.cpp
   QmitkConvertMaskToLabelAction.cpp
   QmitkConvertToMultiLabelSegmentationAction.cpp
@@ -17,6 +16,7 @@ set(INTERNAL_CPP_FILES
   SegmentationUtilities/QmitkMultiLabelSegmentationUtilitiesView.cpp
   SegmentationUtilities/QmitkSegmentationUtilityWidget.cpp
   SegmentationUtilities/BooleanOperations/QmitkBooleanOperationsWidget.cpp
+  SegmentationUtilities/ContourModelToImage/QmitkContourModelToImageWidget.cpp
   SegmentationUtilities/MorphologicalOperations/QmitkMorphologicalOperationsWidget.cpp
   SegmentationUtilities/SurfaceToImage/QmitkSurfaceToImageWidget.cpp
   SegmentationUtilities/ImageMasking/QmitkImageMaskingWidget.cpp
@@ -28,6 +28,7 @@ set(UI_FILES
   src/internal/Common/QmitkDataSelectionWidgetControls.ui
   src/internal/SegmentationUtilities/QmitkMultiLabelSegmentationUtilitiesViewControls.ui
   src/internal/SegmentationUtilities/BooleanOperations/QmitkBooleanOperationsWidgetControls.ui
+  src/internal/SegmentationUtilities/ContourModelToImage/QmitkContourModelToImageWidgetControls.ui
   src/internal/SegmentationUtilities/MorphologicalOperations/QmitkMorphologicalOperationsWidgetControls.ui
   src/internal/SegmentationUtilities/SurfaceToImage/QmitkSurfaceToImageWidgetControls.ui
   src/internal/SegmentationUtilities/ImageMasking/QmitkImageMaskingWidgetControls.ui
@@ -39,7 +40,6 @@ set(MOC_H_FILES
   src/internal/mitkPluginActivator.h
   src/internal/QmitkMultiLabelSegmentationView.h
   src/internal/QmitkThresholdAction.h
-  src/internal/QmitkAutocropAction.h
   src/internal/QmitkConvertSurfaceToLabelAction.h
   src/internal/QmitkLoadMultiLabelPresetAction.h
   src/internal/QmitkCreateMultiLabelPresetAction.h
@@ -50,6 +50,7 @@ set(MOC_H_FILES
   src/internal/SegmentationUtilities/QmitkMultiLabelSegmentationUtilitiesView.h
   src/internal/SegmentationUtilities/QmitkSegmentationUtilityWidget.h
   src/internal/SegmentationUtilities/BooleanOperations/QmitkBooleanOperationsWidget.h
+  src/internal/SegmentationUtilities/ContourModelToImage/QmitkContourModelToImageWidget.h
   src/internal/SegmentationUtilities/MorphologicalOperations/QmitkMorphologicalOperationsWidget.h
   src/internal/SegmentationUtilities/SurfaceToImage/QmitkSurfaceToImageWidget.h
   src/internal/SegmentationUtilities/ImageMasking/QmitkImageMaskingWidget.h

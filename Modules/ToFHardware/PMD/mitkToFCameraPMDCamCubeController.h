@@ -50,13 +50,12 @@ namespace mitk
     bool SetDistanceOffset( float offset );
     /*!
     \brief returns the currently applied distance offset in m
-    \param offset offset in m
     */
     float GetDistanceOffset();
     /*!
     \brief Setting the region of interest, the camera is configured to only output a certain area of the image.
     \param leftUpperCornerX x value of left upper corner of region
-    \param leftUpperCornerX y value of left upper corner of region
+    \param leftUpperCornerY y value of left upper corner of region
     \param width width of region
     \param height height of region
     \return returns whether set operation was successful (true) or not (false)

@@ -242,12 +242,6 @@ ALIASES                = "FIXME=\par Fix Me's:\n" \
                          "usersguidemainpage{1}=\page \1 " \
                          "nondependentPluginLink{3}= \ref \1 \"\3\" "
 
-# This tag can be used to specify a number of word-keyword mappings (TCL only).
-# A mapping has the form "name=value". For example adding "class=itcl::class"
-# will allow you to use the command class in the itcl::class meaning.
-
-TCL_SUBST              =
-
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C sources
 # only. Doxygen will then generate output that is more tailored for C. For
 # instance, some of the names that are used will be different. The list of all
@@ -705,7 +699,7 @@ CITE_BIB_FILES         =
 # messages are off.
 # The default value is: NO.
 
-QUIET                  = NO
+QUIET                  = YES
 
 # The WARNINGS tag can be used to turn on/off the warning messages that are
 # generated to standard error ( stderr) by doxygen. If WARNINGS is set to YES
@@ -765,10 +759,11 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = "@MITK_SOURCE_DIR@" \
-                         "@MITK_SOURCE_DIR@/README.md" \
-                         "@MITK_BINARY_DIR@" \
-                         "@MITK_DOXYGEN_ADDITIONAL_INPUT_DIRS@"
+
+INPUT                  = @MITK_SOURCE_DIR@ \
+                         @MITK_BINARY_DIR@ \
+                         @MITK_DOXYGEN_ADDITIONAL_INPUT_DIRS@
+
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -789,13 +784,8 @@ INPUT_ENCODING         = UTF-8
 # *.qsf, *.as and *.js.
 
 FILE_PATTERNS          = *.h \
-                         *.cpp \
                          *.dox \
-                         *.md \
-                         *.txx \
-                         *.tpp \
-                         *.cxx \
-                         *.cmake
+                         *.md
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
@@ -819,6 +809,7 @@ EXCLUDE                = "@MITK_SOURCE_DIR@/Utilities/IpFunc/" \
                          "@MITK_SOURCE_DIR@/Modules/CppMicroServices/core/test/" \
                          "@MITK_SOURCE_DIR@/Modules/CppMicroServices/core/examples/" \
                          "@MITK_SOURCE_DIR@/Modules/CppMicroServices/core/src/util/jsoncpp.cpp" \
+                         "@MITK_SOURCE_DIR@/Modules/CppMicroServices/third_party" \
                          "@MITK_SOURCE_DIR@/CMake/PackageDepends" \
                          "@MITK_SOURCE_DIR@/CMakeExternals" \
                          "@MITK_SOURCE_DIR@/Licenses" \
@@ -826,7 +817,6 @@ EXCLUDE                = "@MITK_SOURCE_DIR@/Utilities/IpFunc/" \
                          "@MITK_BINARY_DIR@/bin/" \
                          "@MITK_BINARY_DIR@/PT/" \
                          "@MITK_BINARY_DIR@/GP/" \
-                         "@MITK_BINARY_DIR@/Modules/CppMicroServices/" \
                          "@MITK_BINARY_DIR@/_CPack_Packages/" \
                          @MITK_DOXYGEN_ADDITIONAL_EXCLUDE_DIRS@
 
@@ -860,6 +850,8 @@ EXCLUDE_PATTERNS       = README* \
                          */snippets/* \
                          */testing/* \
                          */Testing/* \
+                         */test/* \
+                         */resource/* \
                          "@MITK_BINARY_DIR@/*.cmake" \
                          @MITK_DOXYGEN_EXCLUDE_PATTERNS@
 
@@ -878,17 +870,17 @@ EXCLUDE_SYMBOLS        =
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           = "@MITK_SOURCE_DIR@/Documentation/Snippets/" \
-                         "@MITK_SOURCE_DIR@/Examples/" \
+EXAMPLE_PATH           = "@MITK_SOURCE_DIR@/Examples/" \
                          "@MITK_SOURCE_DIR@/Examples/Tutorial/" \
                          "@MITK_SOURCE_DIR@/Examples/Plugins/" \
                          "@MITK_SOURCE_DIR@/Examples/QtFreeRender/" \
                          "@MITK_SOURCE_DIR@/Modules/Core/" \
                          "@MITK_SOURCE_DIR@/Modules/CppMicroServices/core/doc/snippets/" \
                          "@MITK_SOURCE_DIR@/Modules/CppMicroServices/core/examples/" \
-                         "@MITK_DOXYGEN_OUTPUT_DIR@/html/extension-points/html/" \
+                         "@MITK_SOURCE_DIR@/Modules/CppMicroServices/" \
                          "@MITK_SOURCE_DIR@/Modules/OpenCL/Documentation/doxygen/snippets/" \
                          "@MITK_SOURCE_DIR@/Modules/IGT/Tutorial/" \
+                         "@MITK_SOURCE_DIR@/Plugins/org.mitk.gui.common/src/" \
                          "@MITK_SOURCE_DIR@/Plugins/org.mitk.gui.qt.igtexamples/" \
                          "@MITK_SOURCE_DIR@/Plugins/org.mitk.gui.qt.igttracking/"
 
@@ -959,7 +951,7 @@ FILTER_SOURCE_PATTERNS =
 # (index.html). This can be useful if you have a project on for instance GitHub
 # and want to reuse the introduction page also for the doxygen output.
 
-USE_MDFILE_AS_MAINPAGE = README.md
+USE_MDFILE_AS_MAINPAGE =
 
 #---------------------------------------------------------------------------
 # Configuration options related to source browsing
@@ -1666,7 +1658,7 @@ COMPACT_LATEX          = NO
 # The default value is: a4.
 # This tag requires that the tag GENERATE_LATEX is set to YES.
 
-PAPER_TYPE             = a4wide
+PAPER_TYPE             = a4
 
 # The EXTRA_PACKAGES tag can be used to specify one or more LaTeX package names
 # that should be included in the LaTeX output. To get the times font for
@@ -2390,7 +2382,7 @@ PLANTUML_JAR_PATH      =
 # Minimum value: 0, maximum value: 10000, default value: 50.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-DOT_GRAPH_MAX_NODES    = 50
+DOT_GRAPH_MAX_NODES    = 120
 
 # The MAX_DOT_GRAPH_DEPTH tag can be used to set the maximum depth of the graphs
 # generated by dot. A depth value of 3 means that only nodes reachable from the

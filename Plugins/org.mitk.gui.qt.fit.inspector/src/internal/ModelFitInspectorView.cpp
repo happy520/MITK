@@ -34,12 +34,13 @@ found in the LICENSE file.
 #include "mitkModelFitException.h"
 #include "mitkModelFitParameterValueExtraction.h"
 #include "mitkTimeGridHelper.h"
+#include "mitkModelFitResultRelationRule.h"
 
 #include "mitkModelFitPlotDataHelper.h"
 
 #include "ModelFitInspectorView.h"
 
-const std::string ModelFitInspectorView::VIEW_ID = "org.mitk.gui.gt.fit.inspector";
+const std::string ModelFitInspectorView::VIEW_ID = "org.mitk.views.fit.inspector";
 const unsigned int ModelFitInspectorView::INTERPOLATION_STEPS = 10;
 const std::string DEFAULT_X_AXIS = "Time [s]";
 
@@ -100,7 +101,7 @@ void ModelFitInspectorView::CreateQtPartControl(QWidget* parent)
   m_Controls.inputNodeSelector->SetNodePredicate(predicate);
 
   connect(m_SelectionServiceConnector.get(), &QmitkSelectionServiceConnector::ServiceSelectionChanged, m_Controls.inputNodeSelector, &QmitkSingleNodeSelectionWidget::SetCurrentSelection);
-  connect(m_Controls.inputNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnInputChanged(const QList<mitk::DataNode::Pointer>&)));
+  connect(m_Controls.inputNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &ModelFitInspectorView::OnInputChanged);
 
   this->m_SliceChangeListener.RenderWindowPartActivated(this->GetRenderWindowPart());
   connect(&m_SliceChangeListener, SIGNAL(SliceChanged()), this, SLOT(OnSliceChanged()));
@@ -245,9 +246,13 @@ void ModelFitInspectorView::OnFullPlotClicked(bool checked)
 
 int ModelFitInspectorView::ActualizeFitSelectionWidget()
 {
-  mitk::NodeUIDType selectedFitUD = "";
-  bool isModelFitNode = this->m_currentSelectedNode->GetData()->GetPropertyList()->GetStringProperty(
-    mitk::ModelFitConstants::FIT_UID_PROPERTY_NAME().c_str(), selectedFitUD);
+  mitk::modelFit::ModelFitInfo::UIDType selectedFitUD = "";
+  bool isModelFitNode = false;
+  if (this->m_Controls.inputNodeSelector->GetSelectedNode().IsNotNull())
+  {
+    isModelFitNode = this->m_Controls.inputNodeSelector->GetSelectedNode()->GetData()->GetPropertyList()->GetStringProperty(
+      mitk::ModelFitConstants::FIT_UID_PROPERTY_NAME().c_str(), selectedFitUD);
+  }
 
   mitk::DataStorage::Pointer storage = this->GetDataStorage();
 
@@ -323,13 +328,19 @@ void ModelFitInspectorView::OnInputChanged(const QList<mitk::DataNode::Pointer>&
 
       this->m_currentSelectedNode = nodes.front();
 
-      mitk::NodeUIDType selectedFitUD = "";
+      mitk::modelFit::ModelFitInfo::UIDType selectedFitUD = "";
       bool isModelFitNode = this->m_currentSelectedNode->GetData()->GetPropertyList()->GetStringProperty(
                               mitk::ModelFitConstants::FIT_UID_PROPERTY_NAME().c_str(), selectedFitUD);
 
       if (isModelFitNode)
       {
-        this->m_currentSelectedNode = this->GetParentNode(this->m_currentSelectedNode);
+        this->m_currentSelectedNode = this->GetInputNode(this->m_currentSelectedNode);
+        if (this->m_currentSelectedNode.IsNull())
+        {
+          MITK_WARN <<
+            "Model fit Inspector in invalid state. Input image for selected fit cannot be found in data storage. Failed fit UID:"
+            << selectedFitUD;
+        }
       }
 
       auto cmbIndex = ActualizeFitSelectionWidget();
@@ -376,12 +387,16 @@ void ModelFitInspectorView::OnInputChanged(const QList<mitk::DataNode::Pointer>&
 }
 
 mitk::DataNode::ConstPointer
-ModelFitInspectorView::GetParentNode(mitk::DataNode::ConstPointer node)
+ModelFitInspectorView::GetInputNode(mitk::DataNode::ConstPointer node)
 {
   if (node.IsNotNull())
   {
+    std::string selectedFitUD = "";
+
+    auto rule = mitk::ModelFitResultRelationRule::New();
+    auto predicate = rule->GetDestinationsDetector(node);
     mitk::DataStorage::SetOfObjects::ConstPointer parentNodeList =
-      GetDataStorage()->GetSources(node);
+      GetDataStorage()->GetSubset(predicate);
 
     if (parentNodeList->size() > 0)
     {
@@ -395,7 +410,7 @@ ModelFitInspectorView::GetParentNode(mitk::DataNode::ConstPointer node)
 
 void ModelFitInspectorView::ValidateAndSetCurrentPosition()
 {
-  mitk::Point3D currentSelectedPosition = GetRenderWindowPart()->GetSelectedPosition(nullptr);
+  mitk::Point3D currentSelectedPosition = GetRenderWindowPart(mitk::WorkbenchUtil::OPEN)->GetSelectedPosition(nullptr);
   unsigned int currentSelectedTimestep = m_renderWindowPart->GetTimeNavigationController()->GetTime()->
     GetPos();
 
@@ -409,15 +424,15 @@ void ModelFitInspectorView::ValidateAndSetCurrentPosition()
     m_currentPositionTime.Modified();
     m_validSelectedPosition = false;
 
-    mitk::Image::Pointer inputImage = this->GetCurrentInputImage();
+    auto inputImage = this->GetCurrentInputImage();
 
     if (inputImage.IsNull())
     {
       return;
     }
 
-    mitk::BaseGeometry::Pointer geometry = inputImage->GetTimeGeometry()->GetGeometryForTimeStep(
-      m_currentSelectedTimeStep);
+    mitk::BaseGeometry::ConstPointer geometry = inputImage->GetTimeGeometry()->GetGeometryForTimeStep(
+      m_currentSelectedTimeStep).GetPointer();
 
     // check for invalid time step
     if (geometry.IsNull())
@@ -435,9 +450,9 @@ void ModelFitInspectorView::ValidateAndSetCurrentPosition()
   }
 }
 
-mitk::Image::Pointer  ModelFitInspectorView::GetCurrentInputImage() const
+mitk::Image::ConstPointer  ModelFitInspectorView::GetCurrentInputImage() const
 {
-  mitk::Image::Pointer result = nullptr;
+  mitk::Image::ConstPointer result = nullptr;
 
   if (this->m_currentFit.IsNotNull())
   {

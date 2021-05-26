@@ -85,7 +85,7 @@ void mitk::ContourModelMapper3D::Update(mitk::BaseRenderer *renderer)
   // Check if time step is valid
   const TimeGeometry *dataTimeGeometry = data->GetTimeGeometry();
   if ((dataTimeGeometry == nullptr) || (dataTimeGeometry->CountTimeSteps() == 0) ||
-      (!dataTimeGeometry->IsValidTimeStep(renderer->GetTimeStep())) || (this->GetTimestep() == -1))
+      (!dataTimeGeometry->IsValidTimePoint(renderer->GetTime())) || (this->GetTimestep() == -1))
   {
     // clear the rendered polydata
     localStorage->m_Mapper->SetInputData(vtkSmartPointer<vtkPolyData>::New());
@@ -118,7 +118,7 @@ void mitk::ContourModelMapper3D::Update(mitk::BaseRenderer *renderer)
 
 vtkSmartPointer<vtkPolyData> mitk::ContourModelMapper3D::CreateVtkPolyDataFromContour(mitk::ContourModel *inputContour)
 {
-  unsigned int timestep = this->GetTimestep();
+  const auto timestep = this->GetTimestep();
 
   // the points to draw
   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();

@@ -25,14 +25,12 @@ found in the LICENSE file.
 #include "mitkRegistrationHelper.h"
 #include <mitkResultNodeGenerationHelper.h>
 #include <mitkUIDHelper.h>
-#include <mitkAlgorithmHelper.h>
+#include <mitkMAPAlgorithmHelper.h>
 #include <mitkResultNodeGenerationHelper.h>
-#include <mitkNodePredicateDataProperty.h>
 #include <mitkNodePredicateFunction.h>
-#include <mitkNodePredicateDataType.h>
 #include <mitkNodePredicateOr.h>
 #include <mitkNodePredicateAnd.h>
-#include <mitkNodePredicateProperty.h>
+#include <mitkNodePredicateDataProperty.h>
 
 // Qmitk
 #include "QmitkMatchPointMapper.h"
@@ -57,9 +55,9 @@ void QmitkMatchPointMapper::SetFocus()
 
 void QmitkMatchPointMapper::CreateConnections()
 {
-    connect(m_Controls.registrationNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnRegNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-    connect(m_Controls.inputNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnInputNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-    connect(m_Controls.referenceNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnReferenceNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
+    connect(m_Controls.registrationNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointMapper::OnRegNodeSelectionChanged);
+    connect(m_Controls.inputNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointMapper::OnInputNodeSelectionChanged);
+    connect(m_Controls.referenceNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointMapper::OnReferenceNodeSelectionChanged);
 
     connect(m_Controls.m_cbManualRef, SIGNAL(clicked()), this, SLOT(OnManualRefChecked()));
     connect(m_Controls.m_cbLinkFactors, SIGNAL(clicked()), this, SLOT(OnLinkSampleFactorChecked()));
@@ -137,12 +135,7 @@ bool  QmitkMatchPointMapper::IsAbleToRefineGeometry() const
 
 bool  QmitkMatchPointMapper::IsBinaryInput() const
 {
-    mitk::NodePredicateDataType::Pointer isLabelSet = mitk::NodePredicateDataType::New("LabelSetImage");
-    mitk::NodePredicateDataType::Pointer isImage = mitk::NodePredicateDataType::New("Image");
-    mitk::NodePredicateProperty::Pointer isBinary = mitk::NodePredicateProperty::New("binary", mitk::BoolProperty::New(true));
-    mitk::NodePredicateAnd::Pointer isLegacyMask = mitk::NodePredicateAnd::New(isImage, isBinary);
-
-    mitk::NodePredicateOr::Pointer maskPredicate = mitk::NodePredicateOr::New(isLegacyMask, isLabelSet);
+    auto maskPredicate = mitk::MITKRegistrationHelper::MaskNodePredicate();
 
     bool result = false;
 
@@ -330,18 +323,23 @@ void QmitkMatchPointMapper::CheckInputs()
 void QmitkMatchPointMapper::ConfigureMappingControls()
 {
     bool validInput = m_spSelectedInputNode.IsNotNull();
-    bool validReg = m_spSelectedRegNode.IsNotNull();
     bool validRef = m_spSelectedRefNode.IsNotNull();
 
     this->m_Controls.referenceNodeSelector->setEnabled(this->m_Controls.m_cbManualRef->isChecked());
-    this->m_Controls.m_pbMap->setEnabled(validInput  && validRef && validReg);
-    this->m_Controls.m_pbRefine->setEnabled(validInput && validReg
-        && this->IsAbleToRefineGeometry() && !this->IsPointSetInput());
+    this->m_Controls.m_pbMap->setEnabled(validInput  && validRef);
+    this->m_Controls.m_pbRefine->setEnabled(validInput && this->IsAbleToRefineGeometry() && !this->IsPointSetInput());
 
-    if (validInput && validReg)
+    if (validInput)
     {
-        this->m_Controls.m_leMappedName->setText(tr("mapped_by_") + QString::fromStdString(
-            m_spSelectedRegNode->GetName()));
+      if (m_spSelectedRegNode.IsNotNull())
+      {
+        this->m_Controls.m_leMappedName->setText(tr("mapped_") + QString::fromStdString(m_spSelectedInputNode->GetName())
+          + tr("_by_") + QString::fromStdString(m_spSelectedRegNode->GetName()));
+      }
+      else
+      {
+        this->m_Controls.m_leMappedName->setText(tr("resampled_") + QString::fromStdString(m_spSelectedInputNode->GetName()));
+      }
     }
     else
     {
@@ -561,7 +559,11 @@ void QmitkMatchPointMapper::OnMapResultIsAvailable(mitk::BaseData::Pointer spMap
         spMappedData, job->GetRegistration()->getRegistrationUID(), job->m_InputDataUID,
         job->m_doGeometryRefinement, job->m_InterpolatorLabel);
     this->GetDataStorage()->Add(spMappedNode);
-    this->GetRenderWindowPart()->RequestUpdate();
+
+    auto* renderWindowPart = this->GetRenderWindowPart();
+
+    if (nullptr != renderWindowPart)
+      renderWindowPart->RequestUpdate();
 
     this->CheckInputs();
     this->ConfigureMappingControls();

@@ -12,6 +12,13 @@ found in the LICENSE file.
 
 #include "QmitkSimpleExampleView.h"
 
+#include <vtkImageWriter.h>
+#include <vtkJPEGWriter.h>
+#include <vtkPNGWriter.h>
+#include <vtkRenderLargeImage.h>
+#include <vtkRenderWindow.h>
+#include <vtkOpenGL.h>
+
 #include "QmitkRenderWindow.h"
 #include "QmitkStepperAdapter.h"
 
@@ -25,13 +32,6 @@ found in the LICENSE file.
 #include <QFileInfo>
 #include <QMessageBox>
 #include <berryPlatform.h>
-
-#include <vtkImageWriter.h>
-#include <vtkJPEGWriter.h>
-#include <vtkPNGWriter.h>
-#include <vtkRenderLargeImage.h>
-#include <vtkRenderWindow.h>
-#include <vtkOpenGL.h>
 
 const std::string QmitkSimpleExampleView::VIEW_ID = "org.mitk.views.simpleexample";
 
@@ -54,7 +54,7 @@ void QmitkSimpleExampleView::CreateQtPartControl(QWidget *parent)
     m_Controls->setupUi(parent);
     this->CreateConnections();
 
-    this->RenderWindowPartActivated(this->GetRenderWindowPart());
+    this->RenderWindowPartActivated(this->GetRenderWindowPart(mitk::WorkbenchUtil::OPEN));
   }
 }
 
@@ -187,18 +187,17 @@ void QmitkSimpleExampleView::GenerateMovie()
     QMessageBox::information(
       nullptr,
       "Movie Maker",
-      "<p>Set path to FFmpeg<sup>1</sup> or Libav<sup>2</sup> (avconv) in preferences (Window -> Preferences... "
+      "<p>Set path to FFmpeg<sup>1</sup> in preferences (Window -> Preferences... "
       "(Ctrl+P) -> External Programs) to be able to record your movies to video files.</p>"
-      "<p>If you are using Linux, chances are good that either FFmpeg or Libav is included in the official package "
+      "<p>If you are using Linux, chances are good that FFmpeg is included in the official package "
       "repositories.</p>"
-      "<p>[1] <a href=\"https://www.ffmpeg.org/download.html\">Download FFmpeg from ffmpeg.org</a><br/>"
-      "[2] <a href=\"https://libav.org/download.html\">Download Libav from libav.org</a></p>");
+      "<p>[1] <a href=\"https://www.ffmpeg.org/download.html\">Download FFmpeg from ffmpeg.org</a></p>");
     return;
   }
 
   movieWriter->SetFFmpegPath(GetFFmpegPath());
 
-  vtkRenderWindow *renderWindow = movieRenderWindow->GetRenderWindow();
+  vtkRenderWindow *renderWindow = movieRenderWindow->renderWindow();
 
   if (renderWindow == nullptr)
     return;
@@ -273,7 +272,7 @@ void QmitkSimpleExampleView::StereoSelectionChanged(int id)
   Dresden mode is yet another stereoscopic interleaving.
   */
 
-  mitk::IRenderWindowPart *renderWindowPart = this->GetRenderWindowPart();
+  auto *renderWindowPart = this->GetRenderWindowPart(mitk::WorkbenchUtil::OPEN);
   vtkRenderWindow *vtkrenderwindow = renderWindowPart->GetQmitkRenderWindow("3d")->GetVtkRenderWindow();
 
   // note: foreground vtkRenderers (at least the department logo renderer) produce errors in stereoscopic visualization.
@@ -308,7 +307,7 @@ QmitkRenderWindow *QmitkSimpleExampleView::GetSelectedRenderWindow() const
   }
   else
   {
-    return this->GetRenderWindowPart()->GetQmitkRenderWindow(id);
+    return this->GetRenderWindowPart(mitk::WorkbenchUtil::OPEN)->GetQmitkRenderWindow(id);
   }
 }
 
@@ -394,7 +393,7 @@ void QmitkSimpleExampleView::TakeScreenshot(vtkRenderer *renderer,
   renderer->GetBackground(oldBackground);
   double white[] = {1.0, 1.0, 1.0};
   renderer->SetBackground(white);
-  mitk::IRenderWindowPart *renderWindowPart = this->GetRenderWindowPart();
+  mitk::IRenderWindowPart* renderWindowPart = this->GetRenderWindowPart(mitk::WorkbenchUtil::OPEN);
   renderWindowPart->EnableDecorations(false);
 
   fileWriter->Write();
@@ -413,7 +412,7 @@ void QmitkSimpleExampleView::RenderWindowSelected(const QString &id)
   {
     m_SliceStepper.reset(new QmitkStepperAdapter(
       m_Controls->sliceNavigator,
-      this->GetRenderWindowPart()->GetQmitkRenderWindow(id)->GetSliceNavigationController()->GetSlice(),
+      this->GetRenderWindowPart(mitk::WorkbenchUtil::OPEN)->GetQmitkRenderWindow(id)->GetSliceNavigationController()->GetSlice(),
       "sliceNavigatorFromSimpleExample"));
   }
 }

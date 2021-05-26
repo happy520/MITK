@@ -24,7 +24,7 @@ found in the LICENSE file.
 #include <mitkImageTimeSelector.h>
 #include <mitkMAPAlgorithmInfoSelection.h>
 #include <mitkRegistrationHelper.h>
-#include <mitkAlgorithmHelper.h>
+#include <mitkMAPAlgorithmHelper.h>
 #include <mitkResultNodeGenerationHelper.h>
 #include <mitkNodePredicateDataType.h>
 #include <mitkNodePredicateOr.h>
@@ -86,10 +86,10 @@ void QmitkMatchPoint::SetFocus()
 
 void QmitkMatchPoint::CreateConnections()
 {
-  connect(m_Controls.targetNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-  connect(m_Controls.movingNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-  connect(m_Controls.targetMaskNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-  connect(m_Controls.movingMaskNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
+  connect(m_Controls.targetNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPoint::OnNodeSelectionChanged);
+  connect(m_Controls.movingNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPoint::OnNodeSelectionChanged);
+  connect(m_Controls.targetMaskNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPoint::OnNodeSelectionChanged);
+  connect(m_Controls.movingMaskNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPoint::OnNodeSelectionChanged);
 
   // ------
   // Tab 1 - Shared library loading interface
@@ -307,14 +307,12 @@ bool QmitkMatchPoint::CheckInputs()
     else
     {
       m_spSelectedMovingMaskNode = m_Controls.movingMaskNodeSelector->GetSelectedNode();
-      m_spSelectedMovingMaskData = nullptr;
+      m_spSelectedMovingMaskData = dynamic_cast<mitk::Image*>(m_spSelectedMovingMaskNode->GetData());
 
-      auto movingMaskImage = dynamic_cast<mitk::Image*>(m_spSelectedMovingMaskNode->GetData());
-
-      if (movingMaskImage->GetDimension() - 1 == m_LoadedAlgorithm->getMovingDimensions()
-          && movingMaskImage->GetTimeSteps() > 1)
+      if (m_spSelectedMovingMaskData->GetDimension() - 1 == m_LoadedAlgorithm->getMovingDimensions()
+          && m_spSelectedMovingMaskData->GetTimeSteps() > 1)
       {
-        m_spSelectedMovingMaskData = ExtractFirstFrame(movingMaskImage).GetPointer();
+        m_spSelectedMovingMaskData = ExtractFirstFrame(m_spSelectedMovingMaskData).GetPointer();
         m_Controls.m_teLog->append(
           QStringLiteral("<font color='gray'><i>Selected moving mask has multiple time steps. First time step is used as moving mask.</i></font>"));
       }
@@ -328,13 +326,12 @@ bool QmitkMatchPoint::CheckInputs()
     else
     {
       m_spSelectedTargetMaskNode = m_Controls.targetMaskNodeSelector->GetSelectedNode();
-      m_spSelectedTargetMaskData = nullptr;
-      auto targetMaskImage = dynamic_cast<mitk::Image*>(m_spSelectedTargetMaskNode->GetData());
+      m_spSelectedTargetMaskData = dynamic_cast<mitk::Image*>(m_spSelectedTargetMaskNode->GetData());
 
-      if (targetMaskImage->GetDimension() - 1 == m_LoadedAlgorithm->getTargetDimensions()
-          && targetMaskImage->GetTimeSteps() > 1)
+      if (m_spSelectedTargetMaskData->GetDimension() - 1 == m_LoadedAlgorithm->getTargetDimensions()
+          && m_spSelectedTargetMaskData->GetTimeSteps() > 1)
       {
-        m_spSelectedTargetMaskData = ExtractFirstFrame(targetMaskImage).GetPointer();
+        m_spSelectedTargetMaskData = ExtractFirstFrame(m_spSelectedTargetMaskData).GetPointer();
         m_Controls.m_teLog->append(
           QStringLiteral("<font color='gray'><i>Selected target mask has multiple time steps. First time step is used as target mask.</i></font>"));
       }
@@ -470,12 +467,9 @@ void QmitkMatchPoint::ConfigureNodeSelectors()
 {
   auto isImage = mitk::MITKRegistrationHelper::ImageNodePredicate();
   auto isPointSet = mitk::MITKRegistrationHelper::PointSetNodePredicate();
-  mitk::NodePredicateDataType::Pointer isLabelSet = mitk::NodePredicateDataType::New("LabelSetImage");
-  mitk::NodePredicateProperty::Pointer isBinary = mitk::NodePredicateProperty::New("binary", mitk::BoolProperty::New(true));
-  mitk::NodePredicateAnd::Pointer isLegacyMask = mitk::NodePredicateAnd::New(isImage, isBinary);
+  auto isMask = mitk::MITKRegistrationHelper::MaskNodePredicate();
   mitk::NodePredicateBase::Pointer dimensionPredicate = mitk::NodePredicateOr::New(mitk::NodePredicateDimension::New(3), mitk::NodePredicateDimension::New(4)).GetPointer();
 
-  mitk::NodePredicateAnd::Pointer maskPredicate = mitk::NodePredicateAnd::New(mitk::NodePredicateOr::New(isLegacyMask, isLabelSet), dimensionPredicate);
 
   m_Controls.movingNodeSelector->setEnabled(m_LoadedAlgorithm.IsNotNull());
   m_Controls.targetNodeSelector->setEnabled(m_LoadedAlgorithm.IsNotNull());
@@ -491,7 +485,7 @@ void QmitkMatchPoint::ConfigureNodeSelectors()
       dimensionPredicate = mitk::NodePredicateDimension::New(2);
     }
 
-    if (mitk::MITKAlgorithmHelper::HasImageAlgorithmInterface(m_LoadedAlgorithm))
+    if (mitk::MAPAlgorithmHelper::HasImageAlgorithmInterface(m_LoadedAlgorithm))
     {
       dataPredicate = mitk::NodePredicateAnd::New(isImage, dimensionPredicate);
 
@@ -503,7 +497,7 @@ void QmitkMatchPoint::ConfigureNodeSelectors()
       m_Controls.targetNodeSelector->SetPopUpHint("Select the target image that should be used as reference for the registration.");
     }
 
-    if (mitk::MITKAlgorithmHelper::HasPointSetAlgorithmInterface(m_LoadedAlgorithm))
+    if (mitk::MAPAlgorithmHelper::HasPointSetAlgorithmInterface(m_LoadedAlgorithm))
     {
       if (dataPredicate.IsNull())
       {
@@ -531,7 +525,7 @@ void QmitkMatchPoint::ConfigureNodeSelectors()
     m_Controls.movingNodeSelector->SetNodePredicate(nodePredicate);
     m_Controls.targetNodeSelector->SetNodePredicate(nodePredicate);
 
-    nodePredicate = mitk::NodePredicateAnd::New(maskPredicate, dimensionPredicate);
+    nodePredicate = mitk::NodePredicateAnd::New(isMask, dimensionPredicate);
 
     m_Controls.movingMaskNodeSelector->SetEmptyInfo("Select moving mask. (optional)");
     m_Controls.movingMaskNodeSelector->SetPopUpTitel("Select moving mask");
@@ -731,7 +725,10 @@ void QmitkMatchPoint::OnRegJobFinished()
 {
   this->m_Working = false;
 
-  this->GetRenderWindowPart()->RequestUpdate();
+  auto* renderWindowPart = this->GetRenderWindowPart();
+
+  if (nullptr != renderWindowPart)
+    renderWindowPart->RequestUpdate();
 
   this->CheckInputs();
   this->ConfigureRegistrationControls();
@@ -752,7 +749,11 @@ void QmitkMatchPoint::OnRegResultIsAvailable(mitk::MAPRegistrationWrapper::Point
       QStringLiteral("<b><font color='blue'> Storing registration object in data manager ... </font></b>"));
 
     this->GetDataStorage()->Add(spResultRegistrationNode);
-    this->GetRenderWindowPart()->RequestUpdate();
+
+    auto* renderWindowPart = this->GetRenderWindowPart();
+
+    if (nullptr != renderWindowPart)
+      renderWindowPart->RequestUpdate();
   }
 
   if (m_Controls.m_checkMapEntity->checkState() == Qt::Checked)
@@ -803,7 +804,11 @@ void QmitkMatchPoint::OnMapResultIsAvailable(mitk::BaseData::Pointer spMappedDat
                                          spMappedData, job->GetRegistration()->getRegistrationUID(), job->m_InputDataUID,
                                          job->m_doGeometryRefinement, job->m_InterpolatorLabel);
   this->GetDataStorage()->Add(spMappedNode);
-  this->GetRenderWindowPart()->RequestUpdate();
+
+  auto* renderWindowPart = this->GetRenderWindowPart();
+
+  if (nullptr != renderWindowPart)
+    renderWindowPart->RequestUpdate();
 }
 
 void QmitkMatchPoint::OnAlgorithmIterated(QString info, bool hasIterationCount,

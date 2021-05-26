@@ -4,6 +4,7 @@
 set(MITK_MODULES
   Core
   CommandLine
+  CoreCmdApps
   AppUtil
   LegacyIO
   DataTypesExt
@@ -11,8 +12,7 @@ set(MITK_MODULES
   LegacyGL
   AlgorithmsExt
   MapperExt
-  DICOMReader
-  DICOMReaderServices
+  DICOM
   DICOMQI
   DICOMTesting
   SceneSerializationBase
@@ -45,24 +45,20 @@ set(MITK_MODULES
   ToFHardware
   ToFProcessing
   ToFUI
-  PhotoacousticsHardware
-  PhotoacousticsAlgorithms
-  PhotoacousticsLib
   US
   USUI
-  DicomUI
+  DICOMUI
   Remeshing
   Python
   QtPython
   Persistence
   OpenIGTLinkUI
   IGTUI
-  DicomRT
+  RT
   RTUI
   IOExt
   XNAT
   TubeGraph
-  BiophotonicsHardware
   BoundingShape
   RenderWindowManager
   RenderWindowManagerUI

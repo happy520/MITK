@@ -12,15 +12,11 @@ found in the LICENSE file.
 
 #include "mitkPaintbrushTool.h"
 
-#include "ipSegmentation.h"
 #include "mitkAbstractTransformGeometry.h"
 #include "mitkBaseRenderer.h"
-#include "mitkImageDataItem.h"
-#include "mitkOverwriteSliceImageFilter.h"
 #include "mitkToolManager.h"
 
 #include "mitkContourModelUtils.h"
-#include "mitkLabelSetImage.h"
 #include "mitkLevelWindowProperty.h"
 
 int mitk::PaintbrushTool::m_Size = 1;
@@ -361,8 +357,6 @@ void mitk::PaintbrushTool::MouseMoved(mitk::InteractionEvent *interactionEvent, 
     return;
   }
 
-  int t = positionEvent->GetSender()->GetTimeStep();
-
   auto contour = ContourModel::New();
   contour->SetClosed(true);
 
@@ -385,18 +379,12 @@ void mitk::PaintbrushTool::MouseMoved(mitk::InteractionEvent *interactionEvent, 
     const double radius = static_cast<double>(m_Size) / 2.0;
 
     DataNode *workingNode(m_ToolManager->GetWorkingData(0));
-    Image::Pointer image = dynamic_cast<Image *>(workingNode->GetData());
-    auto *labelImage = dynamic_cast<LabelSetImage *>(image.GetPointer());
-
-    int activeColor = 1;
-    if (labelImage)
-    {
-      activeColor = labelImage->GetActiveLabel(labelImage->GetActiveLayer())->GetValue();
-    }
+    auto workingImage = dynamic_cast<Image*>(workingNode->GetData());
+    int activePixelValue = ContourModelUtils::GetActivePixelValue(workingImage);
 
     // m_PaintingPixelValue only decides whether to paint or erase
     mitk::ContourModelUtils::FillContourInSlice(
-      contour, m_WorkingSlice, image, m_PaintingPixelValue * activeColor);
+      contour, m_WorkingSlice, workingImage, m_PaintingPixelValue * activePixelValue);
 
     m_WorkingNode->SetData(m_WorkingSlice);
     m_WorkingNode->Modified();
@@ -448,7 +436,7 @@ void mitk::PaintbrushTool::MouseMoved(mitk::InteractionEvent *interactionEvent, 
 
       contour->AddVertex(vertex);
 
-      mitk::ContourModelUtils::FillContourInSlice(contour, m_WorkingSlice, image, m_PaintingPixelValue * activeColor);
+      mitk::ContourModelUtils::FillContourInSlice(contour, m_WorkingSlice, workingImage, m_PaintingPixelValue * activePixelValue);
       m_WorkingNode->SetData(m_WorkingSlice);
       m_WorkingNode->Modified();
     }
@@ -463,28 +451,12 @@ void mitk::PaintbrushTool::MouseMoved(mitk::InteractionEvent *interactionEvent, 
   m_LastPosition = indexCoordinates;
 
   // visualize contour
-  ContourModel::Pointer displayContour = FeedbackContourTool::GetFeedbackContour();
-  displayContour->Clear();
-
   ContourModel::Pointer tmp =
     FeedbackContourTool::BackProjectContourFrom2DSlice(m_WorkingSlice->GetGeometry(), contour);
 
-  // copy transformed contour into display contour
-  it = tmp->Begin();
-  end = tmp->End();
-
-  while (it != end)
-  {
-    Point3D point = (*it)->Coordinates;
-
-    displayContour->AddVertex(point, t);
-    it++;
-  }
-
-  m_FeedbackContourNode->GetData()->Modified();
+  this->UpdateCurrentFeedbackContour(tmp);
 
   assert(positionEvent->GetSender()->GetRenderWindow());
-
   RenderingManager::GetInstance()->RequestUpdate(positionEvent->GetSender()->GetRenderWindow());
 }
 

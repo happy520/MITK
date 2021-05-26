@@ -31,25 +31,17 @@ namespace mitk
 
     void SetDefaultProperties(mitk::DataNode *node) override;
 
-    const char *GetFileExtensions() override;
+    std::string GetFileExtensions() override;
 
     mitk::CoreObjectFactoryBase::MultimapType GetFileExtensionsMap() override;
 
-    const char *GetSaveFileExtensions() override;
+    std::string GetSaveFileExtensions() override;
 
     mitk::CoreObjectFactoryBase::MultimapType GetSaveFileExtensionsMap() override;
-
-    DEPRECATED(void RegisterIOFactories());
 
   protected:
     PlanarFigureObjectFactory();
     void CreateFileExtensionsMap();
-    MultimapType m_FileExtensionsMap;
-    MultimapType m_SaveFileExtensionsMap;
-
-  private:
-    itk::ObjectFactoryBase::Pointer m_PlanarFigureIOFactory;
-    itk::ObjectFactoryBase::Pointer m_PlanarFigureWriterFactory;
   };
 }
 

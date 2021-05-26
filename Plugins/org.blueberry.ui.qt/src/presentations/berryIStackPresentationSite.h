@@ -30,7 +30,6 @@ namespace berry
  * Not intended to be implemented by clients.
  *
  * @since 3.0
- * @noimplement This interface is not intended to be implemented by clients.
  */
 struct BERRY_UI_QT IStackPresentationSite : public Object
 {
@@ -134,21 +133,6 @@ struct BERRY_UI_QT IStackPresentationSite : public Object
    * @return the currently selected part or null if the stack is empty
    */
   virtual IPresentablePart::Pointer GetSelectedPart() = 0;
-
-  /**
-   * Adds system actions to the given menu manager. The site may
-   * make use of the following group ids:
-   * <ul>
-   * <li><code>close</code>, for close actions</li>
-   * <li><code>size</code>, for resize actions</li>
-   * <li><code>misc</code>, for miscellaneous actions</li>
-   * </ul>
-   * The presentation can control the insertion position by creating
-   * these group IDs where appropriate.
-   *
-   * @param menuManager the menu manager to populate
-   */
-  //virtual void AddSystemActions(IMenuManager menuManager);
 
   /**
    * Notifies the workbench that the preferred size of the presentation has

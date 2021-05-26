@@ -19,6 +19,8 @@ found in the LICENSE file.
 #include "mitkStatisticsToImageRelationRule.h"
 #include "mitkStatisticsToMaskRelationRule.h"
 
+#include "QmitkStyleManager.h"
+
 QmitkImageStatisticsTreeModel::QmitkImageStatisticsTreeModel(QObject *parent) : QmitkAbstractDataStorageModel(parent)
 {
   m_RootItem = new QmitkImageStatisticsTreeItem();
@@ -72,12 +74,17 @@ QVariant QmitkImageStatisticsTreeModel::data(const QModelIndex &index, int role)
   if (!index.isValid())
     return QVariant();
 
-  if (role != Qt::DisplayRole)
-    return QVariant();
+  QmitkImageStatisticsTreeItem* item = static_cast<QmitkImageStatisticsTreeItem*>(index.internalPointer());
 
-  QmitkImageStatisticsTreeItem *item = static_cast<QmitkImageStatisticsTreeItem *>(index.internalPointer());
-
-  return item->data(index.column());
+  if (role == Qt::DisplayRole)
+  {
+    return item->data(index.column());
+  }
+  else if (role == Qt::DecorationRole && index.column() == 0 && item->isWIP() && item->childCount()==0)
+  {
+    return QVariant(QmitkStyleManager::ThemeIcon(QStringLiteral(":/Qmitk/hourglass-half-solid.svg")));
+  }
+  return QVariant();
 }
 
 QModelIndex QmitkImageStatisticsTreeModel::index(int row, int column, const QModelIndex &parent) const
@@ -202,6 +209,40 @@ void QmitkImageStatisticsTreeModel::Clear()
   emit modelChanged();
 }
 
+void QmitkImageStatisticsTreeModel::SetIgnoreZeroValueVoxel(bool _arg)
+{
+  if (m_IgnoreZeroValueVoxel != _arg)
+  {
+    emit beginResetModel();
+    m_IgnoreZeroValueVoxel = _arg;
+    UpdateByDataStorage();
+    emit endResetModel();
+    emit modelChanged();
+  }
+}
+
+bool QmitkImageStatisticsTreeModel::GetIgnoreZeroValueVoxel() const
+{
+  return this->m_IgnoreZeroValueVoxel;
+}
+
+void QmitkImageStatisticsTreeModel::SetHistogramNBins(unsigned int nbins)
+{
+  if (m_HistogramNBins != nbins)
+  {
+    emit beginResetModel();
+    m_HistogramNBins = nbins;
+    UpdateByDataStorage();
+    emit endResetModel();
+    emit modelChanged();
+  }
+}
+
+unsigned int QmitkImageStatisticsTreeModel::GetHistogramNBins() const
+{
+  return this->m_HistogramNBins;
+}
+
 void QmitkImageStatisticsTreeModel::UpdateByDataStorage()
 {
   StatisticsContainerVector newStatistics;
@@ -214,7 +255,7 @@ void QmitkImageStatisticsTreeModel::UpdateByDataStorage()
     {
       if (m_MaskNodes.empty())
       {
-        auto stats = mitk::ImageStatisticsContainerManager::GetImageStatistics(datamanager, image->GetData());
+        auto stats = mitk::ImageStatisticsContainerManager::GetImageStatistics(datamanager, image->GetData(), nullptr, m_IgnoreZeroValueVoxel, m_HistogramNBins, true, false);
 
         if (stats.IsNotNull())
         {
@@ -226,7 +267,7 @@ void QmitkImageStatisticsTreeModel::UpdateByDataStorage()
         for (const auto &mask : m_MaskNodes)
         {
           auto stats =
-            mitk::ImageStatisticsContainerManager::GetImageStatistics(datamanager, image->GetData(), mask->GetData());
+            mitk::ImageStatisticsContainerManager::GetImageStatistics(datamanager, image->GetData(), mask->GetData(), m_IgnoreZeroValueVoxel, m_HistogramNBins, true, false);
           if (stats.IsNotNull())
           {
             newStatistics.emplace_back(stats);
@@ -258,26 +299,29 @@ void QmitkImageStatisticsTreeModel::BuildHierarchicalModel()
   bool hasMask = false;
   bool hasMultipleTimesteps = false;
 
-  std::map<mitk::DataNode::Pointer, QmitkImageStatisticsTreeItem *> dataNodeToTreeItem;
+  std::map<mitk::DataNode::ConstPointer, QmitkImageStatisticsTreeItem *> dataNodeToTreeItem;
 
-  for (auto statistic : m_Statistics)
+  for (const auto &statistic : m_Statistics)
   {
+    bool isWIP = statistic->GetProperty(mitk::STATS_GENERATION_STATUS_PROPERTY_NAME.c_str()).IsNotNull();
     // get the connected image data node/mask data node
     auto imageRule = mitk::StatisticsToImageRelationRule::New();
     auto imageOfStatisticsPredicate = imageRule->GetDestinationsDetector(statistic);
-    auto imageCandidates = this->GetDataStorage()->GetSubset(imageOfStatisticsPredicate);
+    auto imageFinding = std::find_if(m_ImageNodes.begin(), m_ImageNodes.end(), [&imageOfStatisticsPredicate](const mitk::DataNode::ConstPointer& testNode) { return imageOfStatisticsPredicate->CheckNode(testNode); });
 
     auto maskRule = mitk::StatisticsToMaskRelationRule::New();
     auto maskOfStatisticsPredicate = maskRule->GetDestinationsDetector(statistic);
-    auto maskCandidates = this->GetDataStorage()->GetSubset(maskOfStatisticsPredicate);
+    auto maskFinding = std::find_if(m_MaskNodes.begin(), m_MaskNodes.end(), [&maskOfStatisticsPredicate](const mitk::DataNode::ConstPointer& testNode) { return maskOfStatisticsPredicate->CheckNode(testNode); });
 
-    if (imageCandidates->empty())
+    if (imageFinding == m_ImageNodes.end())
     {
       mitkThrow() << "no image found connected to statistic" << statistic << " Aborting.";
     }
-    auto image = imageCandidates->front();
+
+    auto& image = *imageFinding;
+
     // image: 1. hierarchy level
-    QmitkImageStatisticsTreeItem *imageItem;
+    QmitkImageStatisticsTreeItem *imageItem = nullptr;
     auto search = dataNodeToTreeItem.find(image);
     // the tree item was created previously
     if (search != dataNodeToTreeItem.end())
@@ -288,35 +332,35 @@ void QmitkImageStatisticsTreeModel::BuildHierarchicalModel()
     else
     {
       QString imageLabel = QString::fromStdString(image->GetName());
-      if (statistic->GetTimeSteps() == 1 && maskCandidates->empty())
+      if (statistic->GetTimeSteps() == 1 && maskFinding == m_MaskNodes.end())
       {
         auto statisticsObject = statistic->GetStatisticsForTimeStep(0);
-        imageItem = new QmitkImageStatisticsTreeItem(statisticsObject, m_StatisticNames, imageLabel, m_RootItem);
+        imageItem = new QmitkImageStatisticsTreeItem(statisticsObject, m_StatisticNames, imageLabel, isWIP, m_RootItem);
       }
       else
       {
-        imageItem = new QmitkImageStatisticsTreeItem(m_StatisticNames, imageLabel, m_RootItem);
+        imageItem = new QmitkImageStatisticsTreeItem(m_StatisticNames, imageLabel, isWIP, m_RootItem);
       }
       m_RootItem->appendChild(imageItem);
       dataNodeToTreeItem.emplace(image, imageItem);
     }
 
     // mask: 2. hierarchy level (optional, only if mask exists)
-    QmitkImageStatisticsTreeItem *lastParent;
-    if (!maskCandidates->empty())
+    QmitkImageStatisticsTreeItem *lastParent = nullptr;
+    if (maskFinding != m_MaskNodes.end())
     {
-      auto mask = maskCandidates->front();
+      auto& mask = *maskFinding;
       QString maskLabel = QString::fromStdString(mask->GetName());
       QmitkImageStatisticsTreeItem *maskItem;
       // add statistical values directly in this hierarchy level
       if (statistic->GetTimeSteps() == 1)
       {
         auto statisticsObject = statistic->GetStatisticsForTimeStep(0);
-        maskItem = new QmitkImageStatisticsTreeItem(statisticsObject, m_StatisticNames, maskLabel, imageItem);
+        maskItem = new QmitkImageStatisticsTreeItem(statisticsObject, m_StatisticNames, maskLabel, isWIP, imageItem);
       }
       else
       {
-        maskItem = new QmitkImageStatisticsTreeItem(m_StatisticNames, maskLabel, imageItem);
+        maskItem = new QmitkImageStatisticsTreeItem(m_StatisticNames, maskLabel, isWIP, imageItem);
       }
 
       imageItem->appendChild(maskItem);
@@ -337,7 +381,7 @@ void QmitkImageStatisticsTreeModel::BuildHierarchicalModel()
         if (statistic->TimeStepExists(i))
         {
           auto statisticsItem = new QmitkImageStatisticsTreeItem(
-                statistic->GetStatisticsForTimeStep(i), m_StatisticNames, timeStepLabel, lastParent);
+                statistic->GetStatisticsForTimeStep(i), m_StatisticNames, timeStepLabel, isWIP, lastParent);
           lastParent->appendChild(statisticsItem);
         }
       }

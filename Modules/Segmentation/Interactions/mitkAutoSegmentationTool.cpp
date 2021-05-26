@@ -19,8 +19,26 @@ mitk::AutoSegmentationTool::AutoSegmentationTool() : Tool("dummy"), m_OverwriteE
 {
 }
 
+mitk::AutoSegmentationTool::AutoSegmentationTool(const char* interactorType, const us::Module* interactorModule) : Tool(interactorType, interactorModule), m_OverwriteExistingSegmentation(false)
+{
+}
+
 mitk::AutoSegmentationTool::~AutoSegmentationTool()
 {
+}
+
+void mitk::AutoSegmentationTool::Activated()
+{
+  Superclass::Activated();
+
+  m_NoneOverwriteTargetSegmentationNode = nullptr;
+}
+
+void mitk::AutoSegmentationTool::Deactivated()
+{
+  m_NoneOverwriteTargetSegmentationNode = nullptr;
+
+  Superclass::Deactivated();
 }
 
 const char *mitk::AutoSegmentationTool::GetGroup() const
@@ -28,8 +46,11 @@ const char *mitk::AutoSegmentationTool::GetGroup() const
   return "autoSegmentation";
 }
 
-mitk::Image::Pointer mitk::AutoSegmentationTool::Get3DImage(mitk::Image::Pointer image, unsigned int timestep)
+mitk::Image::ConstPointer mitk::AutoSegmentationTool::GetImageByTimeStep(const mitk::Image* image, unsigned int timestep)
 {
+  if (nullptr == image)
+    return image;
+
   if (image->GetDimension() != 4)
     return image;
 
@@ -43,9 +64,24 @@ mitk::Image::Pointer mitk::AutoSegmentationTool::Get3DImage(mitk::Image::Pointer
   return imageTimeSelector->GetOutput();
 }
 
+mitk::Image::ConstPointer mitk::AutoSegmentationTool::GetImageByTimePoint(const mitk::Image* image, TimePointType timePoint)
+{
+  if (nullptr == image)
+    return image;
+
+  if (!image->GetTimeGeometry()->IsValidTimePoint(timePoint))
+    return nullptr;
+
+  return AutoSegmentationTool::GetImageByTimeStep(image, image->GetTimeGeometry()->TimePointToTimeStep(timePoint));
+}
+
 void mitk::AutoSegmentationTool::SetOverwriteExistingSegmentation(bool overwrite)
 {
-  m_OverwriteExistingSegmentation = overwrite;
+  if (m_OverwriteExistingSegmentation != overwrite)
+  {
+    m_OverwriteExistingSegmentation = overwrite;
+    m_NoneOverwriteTargetSegmentationNode = nullptr;
+  }
 }
 
 std::string mitk::AutoSegmentationTool::GetCurrentSegmentationName()
@@ -56,29 +92,39 @@ std::string mitk::AutoSegmentationTool::GetCurrentSegmentationName()
     return "";
 }
 
-mitk::DataNode *mitk::AutoSegmentationTool::GetTargetSegmentationNode()
+mitk::DataNode *mitk::AutoSegmentationTool::GetTargetSegmentationNode() const
 {
-  mitk::DataNode::Pointer emptySegmentation;
-  if (m_OverwriteExistingSegmentation)
+  mitk::DataNode::Pointer segmentationNode = m_ToolManager->GetWorkingData(0);
+  if (!m_OverwriteExistingSegmentation)
   {
-    emptySegmentation = m_ToolManager->GetWorkingData(0);
-  }
-  else
-  {
-    mitk::DataNode::Pointer refNode = m_ToolManager->GetReferenceData(0);
-    if (refNode.IsNull())
+    if (m_NoneOverwriteTargetSegmentationNode.IsNull())
     {
-      // TODO create and use segmentation exceptions instead!!
-      MITK_ERROR << "No valid reference data!";
-      return nullptr;
+      mitk::DataNode::Pointer refNode = m_ToolManager->GetReferenceData(0);
+      if (refNode.IsNull())
+      {
+        // TODO create and use segmentation exceptions instead!!
+        MITK_ERROR << "No valid reference data!";
+        return nullptr;
+      }
+
+      std::string nodename = refNode->GetName() + "_" + this->GetName();
+      mitk::Color color;
+      color.SetRed(1);
+      color.SetBlue(0);
+      color.SetGreen(0);
+      //create a new segmentation node based on the current segmentation as template
+      m_NoneOverwriteTargetSegmentationNode = CreateEmptySegmentationNode(dynamic_cast<mitk::Image*>(segmentationNode->GetData()), nodename, color);
     }
-    std::string nodename = m_ToolManager->GetReferenceData(0)->GetName() + "_" + this->GetName();
-    mitk::Color color;
-    color.SetRed(1);
-    color.SetBlue(0);
-    color.SetGreen(0);
-    emptySegmentation = CreateEmptySegmentationNode(dynamic_cast<mitk::Image *>(refNode->GetData()), nodename, color);
-    m_ToolManager->GetDataStorage()->Add(emptySegmentation, refNode);
+    segmentationNode = m_NoneOverwriteTargetSegmentationNode;
   }
-  return emptySegmentation;
+  return segmentationNode;
+}
+
+void mitk::AutoSegmentationTool::EnsureTargetSegmentationNodeInDataStorage() const
+{
+  auto targetNode = this->GetTargetSegmentationNode();
+  if (!m_ToolManager->GetDataStorage()->Exists(targetNode))
+  {
+    m_ToolManager->GetDataStorage()->Add(targetNode, m_ToolManager->GetReferenceData(0));
+  }
 }

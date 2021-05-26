@@ -19,7 +19,8 @@ found in the LICENSE file.
 #include "QmitkEnums.h"
 
 QmitkDataStorageSimpleTreeModel::QmitkDataStorageSimpleTreeModel(QObject *parent)
-  : QmitkAbstractDataStorageModel(parent), m_Root(nullptr)
+  : QmitkAbstractDataStorageModel(parent)
+  , m_Root(nullptr)
 {
   ResetTree();
 }
@@ -28,7 +29,7 @@ QmitkDataStorageSimpleTreeModel::~QmitkDataStorageSimpleTreeModel()
 {
   m_Root->Delete();
   m_Root = nullptr;
-};
+}
 
 void QmitkDataStorageSimpleTreeModel::ResetTree()
 {
@@ -44,14 +45,18 @@ void QmitkDataStorageSimpleTreeModel::DataStorageChanged()
     m_Root->Delete();
   }
 
+  beginResetModel();
   ResetTree();
   UpdateModelData();
+  endResetModel();
 }
 
 void QmitkDataStorageSimpleTreeModel::NodePredicateChanged()
 {
+  beginResetModel();
   ResetTree();
   UpdateModelData();
+  endResetModel();
 }
 
 void QmitkDataStorageSimpleTreeModel::NodeAdded(const mitk::DataNode *node)

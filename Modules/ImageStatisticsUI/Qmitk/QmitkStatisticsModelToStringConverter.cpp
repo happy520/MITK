@@ -15,7 +15,7 @@ found in the LICENSE file.
 
 QmitkStatisticsModelToStringConverter::QmitkStatisticsModelToStringConverter() {}
 
-void QmitkStatisticsModelToStringConverter::SetTableModel(QAbstractItemModel *model)
+void QmitkStatisticsModelToStringConverter::SetModel(QmitkImageStatisticsTreeModel *model)
 {
   m_statisticsModel = model;
 }
@@ -41,25 +41,25 @@ QString QmitkStatisticsModelToStringConverter::GetString() const
     {
       if (i > 0)
       {
-        textData += m_columnDelimiterWithSpace;
+        textData += m_columnDelimiter;
       }
-      textData += m_statisticsModel->headerData(i, Qt::Horizontal).toString();
+      textData += m_statisticsModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
     }
-    textData += m_lineDelimiter;
+    textData += m_rowDelimiter;
   }
   textData += Iterate(m_rootIndex, m_statisticsModel);
 
   return textData;
 }
 
-void QmitkStatisticsModelToStringConverter::SetRowDelimiter(QChar lineDelimiter)
+void QmitkStatisticsModelToStringConverter::SetRowDelimiter(QChar rowDelimiter)
 {
-  m_lineDelimiter = lineDelimiter;
+  m_rowDelimiter = rowDelimiter;
 }
 
 void QmitkStatisticsModelToStringConverter::SetColumnDelimiter(QChar columnDelimiter)
 {
-  m_columnDelimiterWithSpace = columnDelimiter + QString(" ");
+  m_columnDelimiter = columnDelimiter;
 }
 
 void QmitkStatisticsModelToStringConverter::SetIncludeHeaderData(bool includeHeaderData)
@@ -68,39 +68,61 @@ void QmitkStatisticsModelToStringConverter::SetIncludeHeaderData(bool includeHea
 }
 
 QString QmitkStatisticsModelToStringConverter::Iterate(const QModelIndex &index,
-                                                       const QAbstractItemModel *model,
-                                                       int depth) const
+                                                       const QmitkImageStatisticsTreeModel *model,
+                                                       QString label) const
 {
   QString content;
-  if (index.isValid())
+
+  if (model->hasChildren(index))
   {
-    content = index.data().toString();
-  }
-  if (!model->hasChildren(index) || (index.flags() & Qt::ItemNeverHasChildren))
-  {
-    return content;
+    if (index.isValid())
+    {
+      label += index.data().toString() + QString(" >> ");
+    }
+
+    auto rows = model->rowCount(index);
+    for (int r = 0; r < rows; ++r)
+    {
+      auto childIndex = model->index(r, 0, index);
+
+      if (model->hasChildren(childIndex))
+      {
+        content += Iterate(childIndex, model, label);
+      }
+      else
+      {
+        content += label;
+
+        auto cols = model->columnCount(index);
+        for (int c = 0; c < cols; ++c)
+        {
+          if (c > 0)
+          {
+            content += m_columnDelimiter;
+          }
+
+          auto columnChildIndex = model->index(r, c, index);
+          content += Iterate(columnChildIndex, model, label);
+        }
+        content += m_rowDelimiter;
+      }
+    }
   }
   else
   {
-    content += m_lineDelimiter;
+    if (index.isValid())
+    {
+      auto data = index.data();
+      if (static_cast<QMetaType::Type>(data.type()) == QMetaType::Double)
+      {
+        content = QString("%L1").arg(data.toDouble(), 0, 'f');
+      }
+      else
+      {
+        content = data.toString();
+      }
+    }
   }
 
-  auto rows = model->rowCount(index);
-  auto cols = model->columnCount(index);
-  for (int i = 0; i < rows; ++i)
-  {
-    if (i > 0)
-    {
-      content += m_lineDelimiter;
-    }
-    for (int j = 0; j < cols; ++j)
-    {
-      if (j > 0)
-      {
-        content += m_columnDelimiterWithSpace;
-      }
-      content += Iterate(model->index(i, j, index), model, depth + 1);
-    }
-  }
   return content;
 }

@@ -62,8 +62,8 @@ if(NOT DEFINED BOOST_ROOT AND NOT MITK_USE_SYSTEM_Boost)
           or use another option in the future, we do not forget to remove our
           copy of the FindBoost module again. ]]
 
-  set(url "${MITK_THIRDPARTY_DOWNLOAD_PREFIX_URL}/boost_1_70_0.tar.gz")
-  set(md5 fea771fe8176828fabf9c09242ee8c26)
+  set(url "${MITK_THIRDPARTY_DOWNLOAD_PREFIX_URL}/boost_1_74_0.tar.gz")
+  set(md5 3c8fb92ce08b9ad5a5f0b35731ac2c8e)
 
   if(MITK_USE_Boost_LIBRARIES)
 
@@ -105,14 +105,12 @@ if(NOT DEFINED BOOST_ROOT AND NOT MITK_USE_SYSTEM_Boost)
     else()
 
       #[[ We support GCC and Clang on Unix. On macOS, the toolset must be set
-          to darwin. The actual compiler for all of these toolkits is set
+          to clang. The actual compiler for all of these toolkits is set
           further below, after the bootstrap script but before b2. ]]
 
-      if(APPLE)
-        set(toolset darwin)
-      elseif(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+      if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
         set(toolset gcc)
-      elseif(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+      elseif(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR APPLE)
         set(toolset clang)
       endif()
 
@@ -288,6 +286,8 @@ g"
 
   endif()
 
+  set(install_manifest_dependees install)
+
   if(MITK_USE_Boost_LIBRARIES)
 
     if(WIN32)
@@ -299,6 +299,8 @@ g"
         DEPENDEES install
         WORKING_DIRECTORY <INSTALL_DIR>/lib
       )
+
+      set(install_manifest_dependees post_install)
 
     elseif(APPLE)
 
@@ -312,9 +314,17 @@ g"
         WORKING_DIRECTORY <INSTALL_DIR>/lib
       )
 
+      set(install_manifest_dependees post_install)
+
     endif()
 
   endif()
+
+  ExternalProject_Add_Step(${proj} install_manifest
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/Boost-install_manifest.cmake
+    DEPENDEES ${install_manifest_dependees}
+    WORKING_DIRECTORY ${ep_prefix}
+  )
 
 else()
 

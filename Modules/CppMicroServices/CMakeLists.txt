@@ -5,8 +5,8 @@ set(${PROJECT_NAME}_MINOR_VERSION 99)
 set(${PROJECT_NAME}_PATCH_VERSION 0)
 set(${PROJECT_NAME}_VERSION ${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}_PATCH_VERSION})
 
-cmake_minimum_required(VERSION 2.8)
-cmake_policy(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
+cmake_policy(VERSION 2.8.12)
 cmake_policy(SET CMP0017 NEW)
 
 #-----------------------------------------------------------------------------
@@ -171,7 +171,8 @@ endif()
 if(NOT MSVC)
   foreach(_cxxflag -Werror -Wall -Wextra -Wpointer-arith -Winvalid-pch -Wcast-align
                    -Wwrite-strings -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast
-                   -Wstrict-null-sentinel -Wsign-promo -fdiagnostics-show-option -Wno-error=deprecated-copy)
+                   -Wstrict-null-sentinel -Wsign-promo -fdiagnostics-show-option -Wno-error=deprecated-copy
+                   -Wno-error=implicit-int-float-conversion)
     usFunctionCheckCompilerFlags(${_cxxflag} US_CXX_FLAGS)
   endforeach()
 endif()

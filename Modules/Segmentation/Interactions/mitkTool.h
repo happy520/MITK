@@ -186,10 +186,15 @@ namespace mitk
 
     DataNode::Pointer CreateEmptySegmentationNode(const Image *original,
                                                   const std::string &organName,
-                                                  const mitk::Color &color);
-    DataNode::Pointer CreateSegmentationNode(Image *image, const std::string &organName, const mitk::Color &color);
+                                                  const mitk::Color &color) const;
+    DataNode::Pointer CreateSegmentationNode(Image *image, const std::string &organName, const mitk::Color &color) const;
 
-    virtual bool CanHandle(BaseData *referenceData) const;
+    /** Function used to check if a tool can handle the referenceData and (if specified) the working data.
+     @pre referenceData must be a valid pointer
+     @param referenceData Pointer to the data that should be checked as valid reference for the tool.
+     @param workingData Pointer to the data that should be checked as valid working data for this tool.
+     This parameter can be null if no working data is specified so far.*/
+    virtual bool CanHandle(const BaseData *referenceData, const BaseData *workingData) const;
 
   protected:
     friend class ToolManager;
@@ -217,7 +222,6 @@ namespace mitk
     */
     std::string m_EventConfig;
 
-    Tool();             // purposely hidden
     Tool(const char *, const us::Module *interactorModule = nullptr); // purposely hidden
     ~Tool() override;
 

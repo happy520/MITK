@@ -11,7 +11,7 @@
 #!     DEPENDS PUBLIC MitkCore
 #!     PACKAGE_DEPENDS
 #!       PRIVATE Qt5|Xml+Networking
-#!       PUBLIC  ITK|Watershed
+#!       PUBLIC  ITK|Watersheds
 #! \endcode
 #!
 #! The <moduleName> parameter specifies the name of the module which is used
@@ -46,7 +46,6 @@
 #! - MODULE_NAME
 #! - MODULE_TARGET
 #! - MODULE_IS_ENABLED
-#! - MODULE_SUBPROJECTS
 #!
 #! \sa mitk_create_executable
 #!
@@ -64,7 +63,6 @@
 #! Multi-value Parameters (all optional):
 #!
 
-#! \param SUBPROJECTS List of CDash labels
 #! \param INCLUDE_DIRS Include directories for this module:
 #!        \verbatim
 #! [[PUBLIC|PRIVATE|INTERFACE] <dir1>...]...
@@ -112,13 +110,13 @@ function(mitk_create_module)
      )
 
   set(_macro_multiparams
-      SUBPROJECTS            # list of CDash labels
+      SUBPROJECTS            # list of CDash labels (deprecated)
       INCLUDE_DIRS           # include directories: [PUBLIC|PRIVATE|INTERFACE] <list>
       INTERNAL_INCLUDE_DIRS  # include dirs internal to this module (DEPRECATED)
       DEPENDS                # list of modules this module depends on: [PUBLIC|PRIVATE|INTERFACE] <list>
       DEPENDS_INTERNAL       # list of modules this module internally depends on (DEPRECATED)
       PACKAGE_DEPENDS        # list of "packages this module depends on (e.g. Qt, VTK, etc.): [PUBLIC|PRIVATE|INTERFACE] <package-list>
-      TARGET_DEPENDS         # list of CMake targets this module should depend on
+      TARGET_DEPENDS         # list of CMake targets this module should depend on: [PUBLIC|PRIVATE|INTERFACE] <list>
       ADDITIONAL_LIBS        # list of addidtional private libraries linked to this module.
       CPP_FILES              # list of cpp files
       H_FILES                # list of header files: [PUBLIC|PRIVATE] <list>
@@ -152,7 +150,7 @@ function(mitk_create_module)
     endif()
   endif()
 
-  set(_deprecated_args INTERNAL_INCLUDE_DIRS DEPENDS_INTERNAL EXPORT_DEFINE TARGET_DEPENDS HEADERS_ONLY)
+  set(_deprecated_args INTERNAL_INCLUDE_DIRS DEPENDS_INTERNAL EXPORT_DEFINE HEADERS_ONLY)
   foreach(_deprecated_arg ${_deprecated_args})
     if(MODULE_${_deprecated_arg})
       message(WARNING "The ${_deprecated_arg} argument is deprecated")
@@ -186,23 +184,6 @@ function(mitk_create_module)
   endif()
   if(NOT IS_ABSOLUTE ${MODULE_FILES_CMAKE})
     set(MODULE_FILES_CMAKE ${CMAKE_CURRENT_SOURCE_DIR}/${MODULE_FILES_CMAKE})
-  endif()
-
-  if(NOT MODULE_SUBPROJECTS)
-    if(MITK_DEFAULT_SUBPROJECTS)
-      set(MODULE_SUBPROJECTS ${MITK_DEFAULT_SUBPROJECTS})
-    elseif(TARGET MITK-Modules)
-      set(MODULE_SUBPROJECTS MITK-Modules)
-    endif()
-  endif()
-
-  # check if the subprojects exist as targets
-  if(MODULE_SUBPROJECTS)
-    foreach(subproject ${MODULE_SUBPROJECTS})
-      if(NOT TARGET ${subproject})
-        message(SEND_ERROR "The subproject ${subproject} does not have a corresponding target")
-      endif()
-    endforeach()
   endif()
 
   # -----------------------------------------------------------------
@@ -384,6 +365,8 @@ function(mitk_create_module)
         mitkFunctionCheckCAndCXXCompilerFlags("-Wno-error=inconsistent-missing-override" module_c_flags module_cxx_flags)
         mitkFunctionCheckCAndCXXCompilerFlags("-Wno-error=deprecated-copy" module_c_flags module_cxx_flags)
         mitkFunctionCheckCAndCXXCompilerFlags("-Wno-error=cast-function-type" module_c_flags module_cxx_flags)
+        mitkFunctionCheckCAndCXXCompilerFlags("-Wno-error=deprecated-declarations" module_c_flags module_cxx_flags)
+        mitkFunctionCheckCAndCXXCompilerFlags("-Wno-error=type-limits" module_c_flags module_cxx_flags)
       endif()
     endif()
 
@@ -454,21 +437,23 @@ function(mitk_create_module)
         ${CPP_FILES} ${H_FILES} ${GLOBBED__H_FILES} ${CORRESPONDING__H_FILES} ${TXX_FILES}
         ${TOOL_CPPS} ${TOOL_GUI_CPPS})
 
-    if(MODULE_SUBPROJECTS)
-      set_property(SOURCE ${coverage_sources} APPEND PROPERTY LABELS ${MODULE_SUBPROJECTS} MITK)
-    endif()
-
     # ---------------------------------------------------------------
     # Create the actual module target
 
     if(MODULE_HEADERS_ONLY)
       add_library(${MODULE_TARGET} INTERFACE)
-      set_property(TARGET ${MODULE_TARGET} PROPERTY FOLDER "${MITK_ROOT_FOLDER}/Modules")
+      # INTERFACE_LIBRARY targets may only have whitelisted properties. The property "FOLDER" is not allowed.
+      # set_property(TARGET ${MODULE_TARGET} PROPERTY FOLDER "${MITK_ROOT_FOLDER}/Modules")
     else()
       if(MODULE_EXECUTABLE)
-        add_executable(${MODULE_TARGET}
+        if(MITK_SHOW_CONSOLE_WINDOW)
+          set(_SHOW_CONSOLE_OPTION "")
+        else()
+          set(_SHOW_CONSOLE_OPTION WIN32)
+        endif()
+        add_executable(${MODULE_TARGET} ${_SHOW_CONSOLE_OPTION}
                        ${MODULE_CPP_FILES} ${coverage_sources} ${CPP_FILES_GENERATED} ${Q${KITNAME}_GENERATED_CPP}
-                       ${DOX_FILES} ${UI_FILES} ${QRC_FILES})
+                       ${DOX_FILES} ${UI_FILES} ${QRC_FILES} ${WINDOWS_ICON_RESOURCE_FILE})
         set_property(TARGET ${MODULE_TARGET} PROPERTY FOLDER "${MITK_ROOT_FOLDER}/Modules/Executables")
         set(_us_module_name main)
       else()
@@ -607,14 +592,7 @@ function(mitk_create_module)
     endif()
 
     if(MODULE_TARGET_DEPENDS)
-      add_dependencies(${MODULE_TARGET} ${MODULE_TARGET_DEPENDS})
-    endif()
-
-    if(MODULE_SUBPROJECTS AND NOT MODULE_HEADERS_ONLY)
-      set_property(TARGET ${MODULE_TARGET} PROPERTY LABELS ${MODULE_SUBPROJECTS} MITK)
-      foreach(subproject ${MODULE_SUBPROJECTS})
-        add_dependencies(${subproject} ${MODULE_TARGET})
-      endforeach()
+      target_link_libraries(${MODULE_TARGET} ${MODULE_TARGET_DEPENDS})
     endif()
 
     set(DEPENDS "${MODULE_DEPENDS}")
@@ -669,6 +647,5 @@ function(mitk_create_module)
   set(MODULE_NAME ${MODULE_NAME} PARENT_SCOPE)
   set(MODULE_TARGET ${MODULE_TARGET} PARENT_SCOPE)
   set(MODULE_IS_ENABLED ${MODULE_IS_ENABLED} PARENT_SCOPE)
-  set(MODULE_SUBPROJECTS ${MODULE_SUBPROJECTS} PARENT_SCOPE)
 
 endfunction()

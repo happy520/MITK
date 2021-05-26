@@ -39,8 +39,8 @@ namespace mitk
     typedef itk::SmartPointer<const mitk::Image> ImageConstPointer;
 
     /** \brief Instantiates a mitk::ImageReadAccessor (see its doxygen page for more details)
-     *  \param Image::Pointer specifies the associated Image
-     *  \param ImageDataItem* specifies the allocated image part
+     *  \param iP specifies the associated Image
+     *  \param iDI specifies the allocated image part
      *  \param OptionFlags properties from mitk::ImageAccessorBase::Options can be chosen and assembled with bitwise
      * unification.
      *  \throws mitk::Exception if the Constructor was created inappropriately
@@ -168,10 +168,25 @@ namespace mitk
                                          mitk::ScalarType &val,
                                          int component = 0)
   {
-    mitk::ImagePixelReadAccessor<TPixel, 3> imAccess(im, item, mitk::ImageAccessorBase::IgnoreLock);
+    ImagePixelReadAccessor<TPixel, 3> imAccess(im, item, mitk::ImageAccessorBase::IgnoreLock);
     val = imAccess.GetConsecutivePixelsAsVector(idx, component + 1).GetElement(component);
     return val;
   }
+
+  /** Const overload of FastSinglePixelAccess*/
+  template <class TPixel>
+  mitk::ScalarType FastSinglePixelAccess(mitk::PixelType,
+    mitk::Image::ConstPointer im,
+    const ImageDataItem* item,
+    itk::Index<3> idx,
+    mitk::ScalarType& val,
+    int component = 0)
+  {
+    ImagePixelReadAccessor<TPixel, 3> imAccess(im, item, mitk::ImageAccessorBase::IgnoreLock);
+    val = imAccess.GetConsecutivePixelsAsVector(idx, component + 1).GetElement(component);
+    return val;
+  }
+
 }
 
 #endif // MITKIMAGEPIXELREADACCESSOR_H

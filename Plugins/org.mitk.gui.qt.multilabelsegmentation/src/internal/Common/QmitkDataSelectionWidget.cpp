@@ -14,6 +14,9 @@ found in the LICENSE file.
 #include "internal/mitkPluginActivator.h"
 
 #include <berryPlatform.h>
+
+#include <mitkContourModel.h>
+#include <mitkContourModelSet.h>
 #include <mitkIDataStorageService.h>
 #include <mitkImage.h>
 #include <mitkLabelSetImage.h>
@@ -24,7 +27,7 @@ found in the LICENSE file.
 #include <mitkNodePredicateProperty.h>
 #include <mitkProperties.h>
 #include <mitkSurface.h>
-#include <QmitkDataStorageComboBox.h>
+#include <QmitkSingleNodeSelectionWidget.h>
 #include <QLabel>
 #include <algorithm>
 #include <cassert>
@@ -34,54 +37,72 @@ found in the LICENSE file.
 
 static mitk::NodePredicateBase::Pointer CreatePredicate(QmitkDataSelectionWidget::PredicateType predicateType)
 {
+  auto nonHelperObject = mitk::NodePredicateNot::New(mitk::NodePredicateOr::New(
+    mitk::NodePredicateProperty::New("helper object"),
+    mitk::NodePredicateProperty::New("hidden object")));
 
-  mitk::NodePredicateAnd::Pointer  segmentationPredicate = mitk::NodePredicateAnd::New();
-  segmentationPredicate->AddPredicate(mitk::TNodePredicateDataType<mitk::LabelSetImage>::New());
-  segmentationPredicate->AddPredicate(mitk::NodePredicateNot::New(mitk::NodePredicateProperty::New("helper object")));
+  auto imageType = mitk::TNodePredicateDataType<mitk::Image>::New();
+  auto contourModelType = mitk::TNodePredicateDataType<mitk::ContourModel>::New();
+  auto contourModelSetType = mitk::TNodePredicateDataType<mitk::ContourModelSet>::New();
 
-  mitk::NodePredicateAnd::Pointer maskPredicate = mitk::NodePredicateAnd::New();
-  maskPredicate->AddPredicate(mitk::NodePredicateProperty::New("binary", mitk::BoolProperty::New(true)));
-  maskPredicate->AddPredicate(mitk::NodePredicateNot::New(mitk::NodePredicateProperty::New("helper object", mitk::BoolProperty::New(true))));
+  auto segmentationPredicate = mitk::TNodePredicateDataType<mitk::LabelSetImage>::New();
 
-  mitk::NodePredicateDataType::Pointer isDwi = mitk::NodePredicateDataType::New("DiffusionImage");
-  mitk::NodePredicateDataType::Pointer isDti = mitk::NodePredicateDataType::New("TensorImage");
-  mitk::NodePredicateDataType::Pointer isOdf = mitk::NodePredicateDataType::New("OdfImage");
-  mitk::TNodePredicateDataType<mitk::Image>::Pointer isImage = mitk::TNodePredicateDataType<mitk::Image>::New();
+  auto maskPredicate = mitk::NodePredicateProperty::New("binary", mitk::BoolProperty::New(true));
 
-  mitk::NodePredicateOr::Pointer validImages = mitk::NodePredicateOr::New();
+  auto isDwi = mitk::NodePredicateDataType::New("DiffusionImage");
+  auto isDti = mitk::NodePredicateDataType::New("TensorImage");
+  auto isOdf = mitk::NodePredicateDataType::New("OdfImage");
+  auto isImage = mitk::TNodePredicateDataType<mitk::Image>::New();
+
+  auto validImages = mitk::NodePredicateOr::New();
   validImages->AddPredicate(isImage);
   validImages->AddPredicate(isDwi);
   validImages->AddPredicate(isDti);
   validImages->AddPredicate(isOdf);
 
-  mitk::NodePredicateAnd::Pointer imagePredicate = mitk::NodePredicateAnd::New();
+  auto imagePredicate = mitk::NodePredicateAnd::New();
   imagePredicate->AddPredicate(validImages);
   imagePredicate->AddPredicate(mitk::NodePredicateNot::New(segmentationPredicate));
   imagePredicate->AddPredicate(mitk::NodePredicateNot::New(mitk::NodePredicateProperty::New("binary", mitk::BoolProperty::New(true))));
-  imagePredicate->AddPredicate(mitk::NodePredicateNot::New(mitk::NodePredicateProperty::New("helper object", mitk::BoolProperty::New(true))));
 
-  mitk::NodePredicateAnd::Pointer surfacePredicate = mitk::NodePredicateAnd::New();
-  surfacePredicate->AddPredicate(mitk::TNodePredicateDataType<mitk::Surface>::New());
-  surfacePredicate->AddPredicate(mitk::NodePredicateNot::New(mitk::NodePredicateProperty::New("helper object", mitk::BoolProperty::New(true))));
+  auto surfacePredicate = mitk::TNodePredicateDataType<mitk::Surface>::New();
+
+  mitk::NodePredicateBase::Pointer result;
 
   switch(predicateType)
   {
     case QmitkDataSelectionWidget::ImagePredicate:
-      return imagePredicate.GetPointer();
-
-    case QmitkDataSelectionWidget::MaskPredicate:
-      return maskPredicate.GetPointer();
+      result = imagePredicate.GetPointer();
+      break;
 
     case QmitkDataSelectionWidget::SegmentationPredicate:
-      return segmentationPredicate.GetPointer();
+      result = segmentationPredicate.GetPointer();
+      break;
 
     case QmitkDataSelectionWidget::SurfacePredicate:
-      return surfacePredicate.GetPointer();
+      result = surfacePredicate.GetPointer();
+      break;
+
+    case QmitkDataSelectionWidget::ImageAndSegmentationPredicate:
+      result = imageType.GetPointer();
+      break;
+
+    case QmitkDataSelectionWidget::ContourModelPredicate:
+      result = mitk::NodePredicateOr::New(
+        contourModelSetType,
+        contourModelSetType).GetPointer();
+      break;
+
+    case QmitkDataSelectionWidget::MaskPredicate:
+      result = maskPredicate.GetPointer();
+      break;
 
     default:
       assert(false && "Unknown predefined predicate!");
       return nullptr;
   }
+
+  return mitk::NodePredicateAnd::New(result, nonHelperObject).GetPointer();
 }
 
 QmitkDataSelectionWidget::QmitkDataSelectionWidget(QWidget* parent)
@@ -95,22 +116,51 @@ QmitkDataSelectionWidget::~QmitkDataSelectionWidget()
 {
 }
 
-unsigned int QmitkDataSelectionWidget::AddDataStorageComboBox(QmitkDataSelectionWidget::PredicateType predicate)
+unsigned int QmitkDataSelectionWidget::AddDataSelection(QmitkDataSelectionWidget::PredicateType predicate)
 {
-  return this->AddDataStorageComboBox("", predicate);
+  QString hint = "Select node";
+
+  switch (predicate)
+  {
+  case QmitkDataSelectionWidget::ImagePredicate:
+    hint = "Select an image";
+    break;
+
+  case QmitkDataSelectionWidget::MaskPredicate:
+    hint = "Select a binary mask";
+    break;
+
+  case QmitkDataSelectionWidget::SegmentationPredicate:
+    hint = "Select an ML segmentation";
+    break;
+
+  case QmitkDataSelectionWidget::SurfacePredicate:
+    hint = "Select a surface";
+    break;
+
+  case QmitkDataSelectionWidget::ImageAndSegmentationPredicate:
+    hint = "Select an image or segmentation";
+    break;
+
+  case QmitkDataSelectionWidget::ContourModelPredicate:
+    hint = "Select a contour model";
+    break;
+  }
+
+  return this->AddDataSelection("", hint, hint, "", predicate);
 }
 
-unsigned int QmitkDataSelectionWidget::AddDataStorageComboBox(mitk::NodePredicateBase* predicate)
+unsigned int QmitkDataSelectionWidget::AddDataSelection(mitk::NodePredicateBase* predicate)
 {
-  return this->AddDataStorageComboBox("", predicate);
+  return this->AddDataSelection("", "Select a node", "Select a node", "", predicate);
 }
 
-unsigned int QmitkDataSelectionWidget::AddDataStorageComboBox(const QString &labelText, QmitkDataSelectionWidget::PredicateType predicate)
+unsigned int QmitkDataSelectionWidget::AddDataSelection(const QString &labelText, const QString &info, const QString &popupTitel, const QString &popupHint, QmitkDataSelectionWidget::PredicateType predicate)
 {
-  return this->AddDataStorageComboBox(labelText, CreatePredicate(predicate));
+  return this->AddDataSelection(labelText, info, popupHint, popupTitel, CreatePredicate(predicate));
 }
 
-unsigned int QmitkDataSelectionWidget::AddDataStorageComboBox(const QString &labelText, mitk::NodePredicateBase* predicate)
+unsigned int QmitkDataSelectionWidget::AddDataSelection(const QString &labelText, const QString &info, const QString &popupTitel, const QString &popupHint, mitk::NodePredicateBase* predicate)
 {
   int row = m_Controls.gridLayout->rowCount();
 
@@ -121,13 +171,24 @@ unsigned int QmitkDataSelectionWidget::AddDataStorageComboBox(const QString &lab
     m_Controls.gridLayout->addWidget(label, row, 0);
   }
 
-  QmitkDataStorageComboBox* comboBox = new QmitkDataStorageComboBox(this->GetDataStorage(), predicate, m_Controls.dataSelectionWidget);
-  connect(comboBox, SIGNAL(OnSelectionChanged(const mitk::DataNode *)), this, SLOT(OnSelectionChanged(const mitk::DataNode *)));
-  comboBox->SetAutoSelectNewItems(true);
-  m_Controls.gridLayout->addWidget(comboBox, row, 1);
+  QmitkSingleNodeSelectionWidget* nodeSelection = new QmitkSingleNodeSelectionWidget(m_Controls.dataSelectionWidget);
 
-  m_DataStorageComboBoxes.push_back(comboBox);
-  return static_cast<unsigned int>(m_DataStorageComboBoxes.size() - 1);
+  nodeSelection->SetSelectionIsOptional(false);
+  nodeSelection->SetAutoSelectNewNodes(false);
+  nodeSelection->SetInvalidInfo(info);
+  nodeSelection->SetPopUpTitel(popupTitel);
+  nodeSelection->SetPopUpHint(popupHint);
+  nodeSelection->SetDataStorage(this->GetDataStorage());
+  nodeSelection->SetNodePredicate(predicate);
+  nodeSelection->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+  nodeSelection->setMinimumSize(0, 40);
+
+  connect(nodeSelection, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkDataSelectionWidget::OnSelectionChanged);
+
+  m_Controls.gridLayout->addWidget(nodeSelection, row, 1);
+
+  m_NodeSelectionWidgets.push_back(nodeSelection);
+  return static_cast<unsigned int>(m_NodeSelectionWidgets.size() - 1);
 }
 
 mitk::DataStorage::Pointer QmitkDataSelectionWidget::GetDataStorage() const
@@ -144,8 +205,8 @@ mitk::DataStorage::Pointer QmitkDataSelectionWidget::GetDataStorage() const
 
 mitk::DataNode::Pointer QmitkDataSelectionWidget::GetSelection(unsigned int index)
 {
-  assert(index < m_DataStorageComboBoxes.size());
-  return m_DataStorageComboBoxes[index]->GetSelectedNode();
+  assert(index < m_NodeSelectionWidgets.size());
+  return m_NodeSelectionWidgets[index]->GetSelectedNode();
 }
 
 void QmitkDataSelectionWidget::SetPredicate(unsigned int index, PredicateType predicate)
@@ -155,8 +216,8 @@ void QmitkDataSelectionWidget::SetPredicate(unsigned int index, PredicateType pr
 
 void QmitkDataSelectionWidget::SetPredicate(unsigned int index, mitk::NodePredicateBase* predicate)
 {
-  assert(index < m_DataStorageComboBoxes.size());
-  m_DataStorageComboBoxes[index]->SetPredicate(predicate);
+  assert(index < m_NodeSelectionWidgets.size());
+  m_NodeSelectionWidgets[index]->SetNodePredicate(predicate);
 }
 
 void QmitkDataSelectionWidget::SetHelpText(const QString& text)
@@ -174,10 +235,15 @@ void QmitkDataSelectionWidget::SetHelpText(const QString& text)
   }
 }
 
-void QmitkDataSelectionWidget::OnSelectionChanged(const mitk::DataNode* selection)
+void QmitkDataSelectionWidget::OnSelectionChanged(QList<mitk::DataNode::Pointer> selection)
 {
-  std::vector<QmitkDataStorageComboBox*>::iterator it = std::find(m_DataStorageComboBoxes.begin(), m_DataStorageComboBoxes.end(), sender());
-  assert(it != m_DataStorageComboBoxes.end());
+  std::vector<QmitkSingleNodeSelectionWidget*>::iterator it = std::find(m_NodeSelectionWidgets.begin(), m_NodeSelectionWidgets.end(), sender());
+  assert(it != m_NodeSelectionWidgets.end());
 
-  emit SelectionChanged(std::distance(m_DataStorageComboBoxes.begin(), it), selection);
+  const mitk::DataNode* result = nullptr;
+  if (!selection.empty())
+  {
+    result = selection.front();
+  }
+  emit SelectionChanged(std::distance(m_NodeSelectionWidgets.begin(), it), result);
 }

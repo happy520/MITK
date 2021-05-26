@@ -109,6 +109,7 @@ namespace mitk
     /**
      * @brief Unget a previously acquired service instance.
      * @param service The service instance to be released.
+     * @param context
      * @return \c true if ungetting the service was successful, \c false otherwise.
      */
     template <class S>
@@ -140,12 +141,18 @@ namespace mitk
   class MITK_LOCAL CoreServicePointer
   {
   public:
-    explicit CoreServicePointer(S *service) : m_service(service) { assert(m_service); }
+    explicit CoreServicePointer(S *service, us::ModuleContext* context = us::GetModuleContext())
+      : m_Service(service),
+        m_Context(context)
+    {
+      assert(service);
+    }
+
     ~CoreServicePointer()
     {
       try
       {
-        CoreServices::Unget(m_service);
+        CoreServices::Unget(m_Service, m_Context);
       }
       catch (const std::exception &e)
       {
@@ -157,13 +164,14 @@ namespace mitk
       }
     }
 
-    S *operator->() const { return m_service; }
-  private:
-    // purposely not implemented
-    CoreServicePointer(const CoreServicePointer &);
-    CoreServicePointer &operator=(const CoreServicePointer &);
+    S *operator->() const
+    {
+      return m_Service;
+    }
 
-    S *const m_service;
+  private:
+    S *const m_Service;
+    us::ModuleContext* m_Context;
   };
 }
 

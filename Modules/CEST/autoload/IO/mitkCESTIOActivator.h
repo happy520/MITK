@@ -14,16 +14,15 @@ found in the LICENSE file.
 #define MITKCESTIOActivator_H
 
 #include <mitkCustomMimeType.h>
+#include <mitkDICOMTagsOfInterestAddHelper.h>
 
 #include <usModuleActivator.h>
-#include <usServiceEvent.h>
 
 #include <memory>
 
 namespace mitk
 {
   struct IFileReader;
-  class IDICOMTagsOfInterest;
 
   class CESTIOActivator : public us::ModuleActivator
   {
@@ -33,8 +32,16 @@ namespace mitk
 
   private:
     std::unique_ptr<IFileReader> m_CESTDICOMReader;
+    std::unique_ptr<IFileReader> m_CESTDICOMManualWithMetaFileReader;
+    std::unique_ptr<IFileReader> m_CESTDICOMManualWithOutMetaFileReader;
     std::vector<mitk::CustomMimeType *> m_MimeTypes;
+
+    // Module context
+    us::ModuleContext* m_Context;
+
+    DICOMTagsOfInterestAddHelper m_TagHelper;
   };
+
 }
 
 #endif // MITKCESTIOActivator_H

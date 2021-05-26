@@ -10,30 +10,27 @@ found in the LICENSE file.
 
 ============================================================================*/
 
-
 #include "QmitkNodeSelectionButton.h"
-
-// berry includes
-#include <berryWorkbenchPlugin.h>
-#include <berryQtStyleManager.h>
-
-#include "QPainter"
-#include "QTextDocument"
-#include "QEvent"
-
-#include <mitkDataNode.h>
-#include <QmitkNodeDescriptorManager.h>
 
 // mitk core
 #include <mitkBaseRenderer.h>
-#include <mitkDataNode.h>
 #include <mitkExtractSliceFilter.h>
 #include <vtkMitkLevelWindowFilter.h>
 #include <mitkPlanarFigure.h>
 #include <mitkPropertyNameHelper.h>
 
-// vtk
+// mitk qt widgets module
+#include <QmitkNodeDescriptorManager.h>
+
+// berry includes
+#include <berryWorkbenchPlugin.h>
+#include <berryQtStyleManager.h>
+
 #include <vtkLookupTable.h>
+
+#include <QEvent>
+#include <QPainter>
+#include <QTextDocument>
 
 QPixmap GetPixmapFromImageNode(const mitk::DataNode* dataNode, int height)
 {
@@ -91,13 +88,27 @@ QPixmap GetPixmapFromImageNode(const mitk::DataNode* dataNode, int height)
 
   QImage thumbnailImage(reinterpret_cast<const unsigned char*>(imageData->GetScalarPointer()), dims[0], dims[1], QImage::Format_ARGB32);
 
-  thumbnailImage = thumbnailImage.scaledToHeight(height,Qt::SmoothTransformation).rgbSwapped();
+  if (dims[0] > dims[1])
+  {
+    thumbnailImage = thumbnailImage.scaledToWidth(height, Qt::SmoothTransformation).rgbSwapped();
+  }
+  else
+  {
+    thumbnailImage = thumbnailImage.scaledToHeight(height, Qt::SmoothTransformation).rgbSwapped();
+  }
+
   return QPixmap::fromImage(thumbnailImage);
 }
 
 QmitkNodeSelectionButton::QmitkNodeSelectionButton(QWidget *parent)
-  : QPushButton(parent), m_OutDatedThumpNail(true), m_IsOptional(true), m_NodeModifiedObserverTag(0), m_NodeObserved(false)
-{ }
+  : QPushButton(parent)
+  , m_OutDatedThumbNail(true)
+  , m_DataMTime(0)
+  , m_IsOptional(true)
+  , m_NodeModifiedObserverTag(0)
+  , m_NodeObserved(false)
+{
+}
 
 QmitkNodeSelectionButton::~QmitkNodeSelectionButton()
 {
@@ -143,7 +154,7 @@ void QmitkNodeSelectionButton::OnNodeModified(const itk::Object * /*caller*/, co
 {
   if (itk::ModifiedEvent().CheckEvent(&event))
   {
-    this->repaint();
+    this->update();
   }
 }
 
@@ -158,7 +169,7 @@ void QmitkNodeSelectionButton::SetSelectedNode(const mitk::DataNode* node)
   {
     this->RemoveNodeObserver();
     this->m_SelectedNode = node;
-    this->m_OutDatedThumpNail = true;
+    this->m_OutDatedThumbNail = true;
     this->AddNodeObserver();
   }
 
@@ -197,13 +208,21 @@ void QmitkNodeSelectionButton::paintEvent(QPaintEvent *p)
     auto iconLength = widgetSize.height() - 10;
     auto node = this->m_SelectedNode;
 
-    if (this->m_OutDatedThumpNail)
+    itk::ModifiedTimeType dataMTime = 0;
+    if (m_SelectedNode->GetData())
     {
-      this->m_ThumpNail = GetPixmapFromImageNode(node, iconLength);
-      this->m_OutDatedThumpNail = false;
+      dataMTime = m_SelectedNode->GetData()->GetMTime();
+    }
+    if (dataMTime>m_DataMTime || this->m_OutDatedThumbNail)
+    {
+      this->m_ThumbNail = GetPixmapFromImageNode(node, iconLength);
+      this->m_OutDatedThumbNail = false;
+      m_DataMTime = dataMTime;
     }
 
-    painter.drawPixmap(origin, m_ThumpNail);
+    auto thumbNailOrigin = origin;
+    thumbNailOrigin.setY(thumbNailOrigin.y() + ((iconLength - m_ThumbNail.height()) / 2));
+    painter.drawPixmap(thumbNailOrigin, m_ThumbNail);
     origin.setX(origin.x() + iconLength + 5);
 
     if (this->isEnabled())
@@ -240,14 +259,13 @@ void QmitkNodeSelectionButton::paintEvent(QPaintEvent *p)
 
   painter.translate(origin);
   td.drawContents(&painter);
-
 }
 
 void QmitkNodeSelectionButton::changeEvent(QEvent *event)
 {
   if (event->type() == QEvent::EnabledChange)
   {
-    this->repaint();
+    this->update();
   }
 }
 
@@ -259,5 +277,5 @@ bool QmitkNodeSelectionButton::GetSelectionIsOptional() const
 void QmitkNodeSelectionButton::SetSelectionIsOptional(bool isOptional)
 {
   m_IsOptional = isOptional;
-  this->repaint();
+  this->update();
 }

@@ -21,7 +21,6 @@ found in the LICENSE file.
 
 #include <stack>
 #include <string>
-#include <tinyxml.h>
 #include <vtkXMLParser.h>
 
 namespace mitk
@@ -40,9 +39,10 @@ namespace mitk
     ~ContourModelSetReader() override;
 
     using AbstractFileReader::Read;
-    std::vector<itk::SmartPointer<BaseData>> Read() override;
 
   protected:
+    std::vector<itk::SmartPointer<BaseData>> DoRead() override;
+
   private:
     ContourModelSetReader *Clone() const override;
 

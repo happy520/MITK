@@ -25,5 +25,4 @@
   </extension>
 
   <extension-point id="contextMenuActions" name="Context menu actions"/>
-
 </plugin>

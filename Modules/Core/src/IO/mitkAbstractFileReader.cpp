@@ -14,9 +14,10 @@ found in the LICENSE file.
 
 #include <mitkCustomMimeType.h>
 #include <mitkIOUtil.h>
-#include <mitkStandaloneDataStorage.h>
 
 #include <mitkFileReaderWriterBase.h>
+#include <mitkVersion.h>
+#include <mitkIOMetaInformationPropertyConstants.h>
 
 #include <usGetModuleContext.h>
 #include <usModuleContext.h>
@@ -84,17 +85,28 @@ namespace mitk
 
   std::vector<BaseData::Pointer> AbstractFileReader::Read()
   {
-    std::vector<BaseData::Pointer> result;
+    std::vector<BaseData::Pointer> result = this->DoRead();
 
-    DataStorage::Pointer ds = StandaloneDataStorage::New().GetPointer();
-    this->Read(*ds);
-    DataStorage::SetOfObjects::ConstPointer dataNodes = ds->GetAll();
-    for (DataStorage::SetOfObjects::ConstIterator iter = dataNodes->Begin(), iterEnd = dataNodes->End();
-         iter != iterEnd;
-         ++iter)
+    const auto options = this->GetOptions();
+
+    for (auto& data : result)
     {
-      result.push_back(iter.Value()->GetData());
+      data->SetProperty(PropertyKeyPathToPropertyName(IOMetaInformationPropertyConstants::READER_DESCRIPTION()), StringProperty::New(d->GetDescription()));
+      data->SetProperty(PropertyKeyPathToPropertyName(IOMetaInformationPropertyConstants::READER_VERSION()), StringProperty::New(MITK_VERSION_STRING));
+      data->SetProperty(PropertyKeyPathToPropertyName(IOMetaInformationPropertyConstants::READER_MIME_NAME()), StringProperty::New(d->GetMimeType()->GetName()));
+      data->SetProperty(PropertyKeyPathToPropertyName(IOMetaInformationPropertyConstants::READER_MIME_CATEGORY()), StringProperty::New(d->GetMimeType()->GetCategory()));
+      if (this->GetInputStream() == nullptr)
+      {
+        data->SetProperty(PropertyKeyPathToPropertyName(IOMetaInformationPropertyConstants::READER_INPUTLOCATION()), StringProperty::New(IOUtil::Local8BitToUtf8(this->GetInputLocation())));
+      }
+
+      for (const auto& option : options)
+      {
+        auto optionpath = IOMetaInformationPropertyConstants::READER_OPTION_ROOT().AddElement(option.first);
+        data->SetProperty(PropertyKeyPathToPropertyName(optionpath), StringProperty::New(option.second.ToString()));
+      }
     }
+
     return result;
   }
 
@@ -285,9 +297,9 @@ namespace mitk
     // path
     if (!filePath.empty())
     {
-      mitk::StringProperty::Pointer pathProp =
-        mitk::StringProperty::New(itksys::SystemTools::GetFilenamePath(filePath));
-      node->SetProperty(StringProperty::PATH, pathProp);
+      auto path = itksys::SystemTools::GetFilenamePath(filePath);
+      path = IOUtil::Local8BitToUtf8(path);
+      node->SetProperty(StringProperty::PATH, mitk::StringProperty::New(path));
     }
 
     // name already defined?
@@ -300,7 +312,9 @@ namespace mitk
       if (baseDataNameProp.IsNull() || baseDataNameProp->GetValue() == DataNode::NO_NAME_VALUE())
       {
         // name neither defined in node, nor in BaseData -> name = filebasename;
-        nameProp = mitk::StringProperty::New(this->GetRegisteredMimeType().GetFilenameWithoutExtension(filePath));
+        auto name = this->GetRegisteredMimeType().GetFilenameWithoutExtension(filePath);
+        name = IOUtil::Local8BitToUtf8(name);
+        nameProp = mitk::StringProperty::New(name);
         node->SetProperty("name", nameProp);
       }
       else

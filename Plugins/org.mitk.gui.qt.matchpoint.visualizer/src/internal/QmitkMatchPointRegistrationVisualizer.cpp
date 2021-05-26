@@ -54,8 +54,8 @@ void QmitkMatchPointRegistrationVisualizer::SetFocus()
 
 void QmitkMatchPointRegistrationVisualizer::CreateConnections()
 {
-    connect(m_Controls->registrationNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-    connect(m_Controls->fovReferenceNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
+    connect(m_Controls->registrationNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointRegistrationVisualizer::OnNodeSelectionChanged);
+    connect(m_Controls->fovReferenceNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointRegistrationVisualizer::OnNodeSelectionChanged);
 
     connect(m_Controls->m_pbStyleGrid, SIGNAL(clicked()), this, SLOT(OnStyleButtonPushed()));
     connect(m_Controls->m_pbStyleGlyph, SIGNAL(clicked()), this, SLOT(OnStyleButtonPushed()));
@@ -125,6 +125,9 @@ void QmitkMatchPointRegistrationVisualizer::CreateQtPartControl(QWidget* parent)
     this->CheckInputs();
     this->LoadStateFromNode();
     this->ConfigureVisualizationControls();
+
+    //deactivate because currently not an implemented style
+    this->m_Controls->m_pbStylePoints->setVisible(false);
 }
 
 void QmitkMatchPointRegistrationVisualizer::ConfigureNodePredicates()

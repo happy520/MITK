@@ -41,15 +41,15 @@ if(NOT DEFINED GDCM_DIR)
 
   ExternalProject_Add(${proj}
      LIST_SEPARATOR ${sep}
-     URL ${MITK_THIRDPARTY_DOWNLOAD_PREFIX_URL}/gdcm-2.6.3.tar.bz2
-     URL_MD5 52d398f48e672f1949914f6b3e2d528c
-     PATCH_COMMAND ${PATCH_COMMAND} -N -p1 -i ${CMAKE_CURRENT_LIST_DIR}/GDCM.patch
+     URL ${MITK_THIRDPARTY_DOWNLOAD_PREFIX_URL}/gdcm-3.0.8.tar.gz
+     URL_MD5 29e0e60b04183e3eb9c18ad093156b2c
      CMAKE_GENERATOR ${gen}
      CMAKE_GENERATOR_PLATFORM ${gen_platform}
      CMAKE_ARGS
        ${ep_common_args}
        ${additional_args}
        -DGDCM_BUILD_SHARED_LIBS:BOOL=ON
+       -DGDCM_BUILD_DOCBOOK_MANPAGES:BOOL=OFF
        ${${proj}_CUSTOM_CMAKE_ARGS}
      CMAKE_CACHE_ARGS
        ${ep_common_cache_args}

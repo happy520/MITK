@@ -49,7 +49,7 @@ private:
   void CreateConnections();
   void SetGUIElementsEnabled(bool enabled);
   /** \brief Helper function to convert the histogram in order to forward it to the ChartWidget. */
-  std::map<double, double> ConvertHistogramToMap(itk::Statistics::Histogram<double>::ConstPointer histogram) const;
+  std::vector<std::pair<double, double> > ConvertHistogramToPairList(itk::Statistics::Histogram<double>::ConstPointer histogram) const;
 
 //slots
 	/** \brief  Saves the histogram to the clipboard. */
@@ -73,7 +73,7 @@ private:
   const unsigned int m_MinNBins = 10;
   const unsigned int m_MaxNBins = 10000;
 
-  itk::Statistics::Histogram<double>::ConstPointer m_Histogram;
+  std::map < std::string, itk::Statistics::Histogram<double>::ConstPointer> m_Histograms;
 };
 
 #endif // QmitkHistogramVisualizationWidget_H__INCLUDED

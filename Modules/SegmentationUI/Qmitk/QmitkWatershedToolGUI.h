@@ -13,13 +13,11 @@ found in the LICENSE file.
 #ifndef QmitkWatershedToolGUI_h_Included
 #define QmitkWatershedToolGUI_h_Included
 
-#include "QmitkToolGUI.h"
-#include "mitkWatershedTool.h"
-#include <MitkSegmentationUIExports.h>
+#include "QmitkAutoMLSegmentationToolGUIBase.h"
 
-class QSlider;
-class QLabel;
-class QFrame;
+#include "ui_QmitkWatershedToolGUIControls.h"
+
+#include <MitkSegmentationUIExports.h>
 
 /**
   \ingroup org_mitk_gui_qt_interactivesegmentation_internal
@@ -30,43 +28,39 @@ class QFrame;
   button.
 
 */
-class MITKSEGMENTATIONUI_EXPORT QmitkWatershedToolGUI : public QmitkToolGUI
+class MITKSEGMENTATIONUI_EXPORT QmitkWatershedToolGUI : public QmitkAutoMLSegmentationToolGUIBase
 {
   Q_OBJECT
 
 public:
-  mitkClassMacro(QmitkWatershedToolGUI, QmitkToolGUI);
+  mitkClassMacro(QmitkWatershedToolGUI, QmitkAutoMLSegmentationToolGUIBase);
   itkFactorylessNewMacro(Self);
   itkCloneMacro(Self);
 
-    protected slots :
+protected slots :
 
-    void OnNewToolAssociated(mitk::Tool *);
+  void OnSettingsAccept();
 
-  /** \brief Passes the chosen threshold value directly to the watershed tool */
-  void OnSliderValueThresholdChanged(int value);
-  /** \brief Passes the chosen level value directly to the watershed tool */
-  void OnSliderValueLevelChanged(int value);
-  /** \brief Starts segmentation algorithm in the watershed tool */
-  void OnCreateSegmentation();
+  void OnLevelChanged(double value);
+  void OnThresholdChanged(double value);
 
 protected:
   QmitkWatershedToolGUI();
-  ~QmitkWatershedToolGUI() override;
+  ~QmitkWatershedToolGUI() = default;
 
-  QSlider *m_SliderThreshold;
-  QSlider *m_SliderLevel;
+  void ConnectNewTool(mitk::AutoSegmentationWithPreviewTool* newTool) override;
+  void InitializeUI(QBoxLayout* mainLayout) override;
 
-  /** \brief Label showing the current threshold value. */
-  QLabel *m_ThresholdLabel;
-  /** \brief Label showing the current level value. */
-  QLabel *m_LevelLabel;
-  /** \brief Label showing additional informations. */
-  QLabel *m_InformationLabel;
+  void EnableWidgets(bool enabled) override;
 
-  QFrame *m_Frame;
+  //Recommendation from ITK is to have a threshold:level ration around 1:100
+  //we set Level a bit higher. This provokes more oversegmentation,
+  //but produces less objects in the first run and profits form the fact that
+  //decreasing level is quite fast in the filter.
+  double m_Level = 0.6;
+  double m_Threshold = 0.004;
 
-  mitk::WatershedTool::Pointer m_WatershedTool;
+  Ui_QmitkWatershedToolGUIControls m_Controls;
 };
 
 #endif

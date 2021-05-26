@@ -20,13 +20,7 @@ found in the LICENSE file.
 #include <mitkClippingProperty.h>
 #include <mitkColorProperty.h>
 #include <mitkEnumerationProperty.h>
-/*
-#include <mitkGridRepresentationProperty.h>
-#include <mitkGridVolumeMapperProperty.h>
-*/
 #include <mitkModalityProperty.h>
-//#include <mitkOdfNormalizationMethodProperty.h>
-//#include <mitkOdfScaleByProperty.h>
 #include <mitkGroupTagProperty.h>
 #include <mitkLevelWindowProperty.h>
 #include <mitkLookupTableProperty.h>
@@ -48,18 +42,7 @@ found in the LICENSE file.
 #include <mitkSurface.h>
 #include <mitkVtkWidgetRendering.h>
 
-/*
-#include <mitkCone.h>
-#include <mitkContour.h>
-#include <mitkContourSet.h>
-#include <mitkCuboid.h>
-#include <mitkCylinder.h>
-#include <mitkEllipsoid.h>
-#include <mitkExtrudedContour.h>
-#include <mitkMesh.h>
-#include <mitkPlane.h>
-#include <mitkUnstructuredGrid.h>
-*/
+#include <tinyxml2.h>
 
 void TestAllProperties(const mitk::PropertyList *propList);
 
@@ -98,18 +81,7 @@ int mitkPropertySerializationTest(int /* argc */, char * /*argv*/ [])
   propList->SetProperty("annotation", mitk::AnnotationProperty::New("My Annotation", p3d));
   propList->SetProperty("clipping", mitk::ClippingProperty::New(p3d, v3d));
   propList->SetProperty("color", mitk::ColorProperty::New(1.0, 0.2, 0.2));
-  // mitk::EnumerationProperty::Pointer en = mitk::EnumerationProperty::New();
-  // en->AddEnum("PC", 1); en->AddEnum("Playstation", 2); en->AddEnum("Wii", 111); en->AddEnum("XBox", 7);
-  // en->SetValue("XBox");
-  // propList->SetProperty("enum", en);
-  /*
-  propList->SetProperty("gridrep", mitk::GridRepresentationProperty::New(2));
-  propList->SetProperty("gridvol", mitk::GridVolumeMapperProperty::New(0));
-  */
   propList->SetProperty("modality", mitk::ModalityProperty::New("Color Doppler"));
-  // propList->SetProperty("OdfNormalizationMethodProperty", mitk::OdfNormalizationMethodProperty::New("Global
-  // Maximum"));
-  // propList->SetProperty("OdfScaleByProperty", mitk::OdfScaleByProperty::New("Principal Curvature"));
   propList->SetProperty("PlaneOrientationProperty",
                         mitk::PlaneOrientationProperty::New("Arrows in positive direction"));
   propList->SetProperty("VtkInterpolationProperty", mitk::VtkInterpolationProperty::New("Gouraud"));
@@ -144,9 +116,6 @@ int mitkPropertySerializationTest(int /* argc */, char * /*argv*/ [])
   lt->ChangeOpacity(17, 0.88);
   propList->SetProperty("LookupTableProperty", mitk::LookupTableProperty::New(lt));
   propList->SetProperty("StringProperty", mitk::StringProperty::New("Oh why, gruel world"));
-  // mitk::TransferFunction::Pointer tf = mitk::TransferFunction::New();
-  // tf->SetTransferFunctionMode(1);
-  // propList->SetProperty("TransferFunctionProperty", mitk::TransferFunctionProperty::New(tf));
 
   MITK_TEST_CONDITION_REQUIRED(propList->GetMap()->size() > 0, "Initialize PropertyList");
 
@@ -164,47 +133,6 @@ int mitkPropertySerializationTest(int /* argc */, char * /*argv*/ [])
   TestAllProperties(node->GetPropertyList());
   node->SetData(mitk::VtkWidgetRendering::New());
   TestAllProperties(node->GetPropertyList());
-
-  /*
-  node->SetData(mitk::Contour::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::ContourSet::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::Mesh::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::Cone::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::Cuboid::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::Cylinder::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::Ellipsoid::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::ExtrudedContour::New());
-  TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::Plane::New());
-  TestAllProperties(node->GetPropertyList());
-  //node->SetData(mitk::TrackingVolume::New());  // TrackingVolume is in IGT Module, it does not have special
-  properties, therefore we skip it here
-  //TestAllProperties(node->GetPropertyList());
-  node->SetData(mitk::UnstructuredGrid::New());
-  TestAllProperties(node->GetPropertyList());
-  */
-
-  /* untested base data types:
-    BaseDataTestImplementation
-    RenderWindowFrame
-    GeometryData
-    mitk::PlaneGeometryData
-    GradientBackground
-    ItkBaseDataAdapter
-    SlicedData
-    OdfImage
-    SeedsImage
-    TensorImage
-    BoundingObject
-    BoundingObjectGroup
-    */
 
   MITK_TEST_END();
 }
@@ -240,10 +168,11 @@ void TestAllProperties(const mitk::PropertyList *propList)
     if (serializer != nullptr)
     {
       serializer->SetProperty(prop);
-      TiXmlElement *valueelement = nullptr;
+      tinyxml2::XMLDocument doc;
+      tinyxml2::XMLElement *valueelement = nullptr;
       try
       {
-        valueelement = serializer->Serialize();
+        valueelement = serializer->Serialize(doc);
       }
       catch (...)
       {

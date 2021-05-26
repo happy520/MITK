@@ -20,6 +20,11 @@ found in the LICENSE file.
 #include "mitkLabelSetIOHelper.h"
 #include "mitkLabelSetImageConverter.h"
 #include <mitkLocaleSwitch.h>
+#include <mitkArbitraryTimeGeometry.h>
+#include <mitkIPropertyPersistence.h>
+#include <mitkCoreServices.h>
+#include <mitkItkImageIO.h>
+#include <mitkUIDManipulator.h>
 
 // itk
 #include "itkImageFileReader.h"
@@ -28,8 +33,17 @@ found in the LICENSE file.
 #include "itkMetaDataObject.h"
 #include "itkNrrdImageIO.h"
 
+#include <tinyxml2.h>
+
 namespace mitk
 {
+
+  const char* const PROPERTY_NAME_TIMEGEOMETRY_TYPE = "org.mitk.timegeometry.type";
+  const char* const PROPERTY_NAME_TIMEGEOMETRY_TIMEPOINTS = "org.mitk.timegeometry.timepoints";
+  const char* const PROPERTY_KEY_TIMEGEOMETRY_TYPE = "org_mitk_timegeometry_type";
+  const char* const PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS = "org_mitk_timegeometry_timepoints";
+  const char* const PROPERTY_KEY_UID = "org_mitk_uid";
+
   LabelSetImageIO::LabelSetImageIO()
     : AbstractFileIO(LabelSetImage::GetStaticNameOfClass(), IOMimeTypes::NRRD_MIMETYPE(), "MITK Multilabel Image")
   {
@@ -192,27 +206,61 @@ namespace mitk
         unsigned int count(0);
         while (iter != input->GetLabelSet(layerIdx)->IteratorConstEnd())
         {
-          std::unique_ptr<TiXmlDocument> document;
-          document.reset(new TiXmlDocument());
-
-          auto *decl = new TiXmlDeclaration("1.0", "", ""); // TODO what to write here? encoding? etc....
-          document->LinkEndChild(decl);
-          TiXmlElement *labelElem = mitk::LabelSetIOHelper::GetLabelAsTiXmlElement(iter->second);
-          document->LinkEndChild(labelElem);
-          TiXmlPrinter printer;
-          printer.SetIndent("");
-          printer.SetLineBreak("");
-
-          document->Accept(&printer);
+          tinyxml2::XMLDocument document;
+          document.InsertEndChild(document.NewDeclaration());
+          auto *labelElem = mitk::LabelSetIOHelper::GetLabelAsXMLElement(document, iter->second);
+          document.InsertEndChild(labelElem);
+          tinyxml2::XMLPrinter printer;
+          document.Print(&printer);
 
           sprintf(keybuffer, "org.mitk.label_%03u_%05u", layerIdx, count);
           itk::EncapsulateMetaData<std::string>(
-            nrrdImageIo->GetMetaDataDictionary(), std::string(keybuffer), printer.Str());
+            nrrdImageIo->GetMetaDataDictionary(), std::string(keybuffer), printer.CStr());
           ++iter;
           ++count;
         }
       }
       // end label set specific meta data
+
+      // Handle time geometry
+      const auto* arbitraryTG = dynamic_cast<const ArbitraryTimeGeometry*>(input->GetTimeGeometry());
+      if (arbitraryTG)
+      {
+        itk::EncapsulateMetaData<std::string>(nrrdImageIo->GetMetaDataDictionary(),
+          PROPERTY_KEY_TIMEGEOMETRY_TYPE,
+          ArbitraryTimeGeometry::GetStaticNameOfClass());
+
+
+        auto metaTimePoints = ConvertTimePointListToMetaDataObject(arbitraryTG);
+        nrrdImageIo->GetMetaDataDictionary().Set(PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS, metaTimePoints);
+      }
+
+      // Handle properties
+      mitk::PropertyList::Pointer imagePropertyList = input->GetPropertyList();
+      for (const auto& property : *imagePropertyList->GetMap())
+      {
+        mitk::CoreServicePointer<IPropertyPersistence> propPersistenceService(mitk::CoreServices::GetPropertyPersistence());
+        IPropertyPersistence::InfoResultType infoList = propPersistenceService->GetInfo(property.first, GetMimeType()->GetName(), true);
+
+        if (infoList.empty())
+        {
+          continue;
+        }
+
+        std::string value = infoList.front()->GetSerializationFunction()(property.second);
+
+        if (value == mitk::BaseProperty::VALUE_CANNOT_BE_CONVERTED_TO_STRING)
+        {
+          continue;
+        }
+
+        std::string key = infoList.front()->GetKey();
+
+        itk::EncapsulateMetaData<std::string>(nrrdImageIo->GetMetaDataDictionary(), key, value);
+      }
+
+      // Handle UID
+      itk::EncapsulateMetaData<std::string>(nrrdImageIo->GetMetaDataDictionary(), PROPERTY_KEY_UID, input->GetUID());
 
       ImageReadAccessor imageAccess(inputVector);
       nrrdImageIo->Write(imageAccess.GetData());
@@ -244,7 +292,7 @@ namespace mitk
       return Unsupported;
   }
 
-  std::vector<BaseData::Pointer> LabelSetImageIO::Read()
+  std::vector<BaseData::Pointer> LabelSetImageIO::DoRead()
   {
     mitk::LocaleSwitch localeSwitch("C");
 
@@ -348,25 +396,76 @@ namespace mitk
     MITK_INFO << slicedGeometry->GetCornerPoint(true, true, true);
 
     // re-initialize TimeGeometry
-    ProportionalTimeGeometry::Pointer timeGeometry = ProportionalTimeGeometry::New();
-    timeGeometry->Initialize(slicedGeometry, image->GetDimension(3));
+    const itk::MetaDataDictionary& dictionary = nrrdImageIO->GetMetaDataDictionary();
+    TimeGeometry::Pointer timeGeometry;
+
+    if (dictionary.HasKey(PROPERTY_NAME_TIMEGEOMETRY_TYPE) || dictionary.HasKey(PROPERTY_KEY_TIMEGEOMETRY_TYPE))
+    { // also check for the name because of backwards compatibility. Past code version stored with the name and not with
+      // the key
+      itk::MetaDataObject<std::string>::ConstPointer timeGeometryTypeData;
+      if (dictionary.HasKey(PROPERTY_NAME_TIMEGEOMETRY_TYPE))
+      {
+        timeGeometryTypeData =
+          dynamic_cast<const itk::MetaDataObject<std::string>*>(dictionary.Get(PROPERTY_NAME_TIMEGEOMETRY_TYPE));
+      }
+      else
+      {
+        timeGeometryTypeData =
+          dynamic_cast<const itk::MetaDataObject<std::string>*>(dictionary.Get(PROPERTY_KEY_TIMEGEOMETRY_TYPE));
+      }
+
+      if (timeGeometryTypeData->GetMetaDataObjectValue() == ArbitraryTimeGeometry::GetStaticNameOfClass())
+      {
+        MITK_INFO << "used time geometry: " << ArbitraryTimeGeometry::GetStaticNameOfClass();
+        typedef std::vector<TimePointType> TimePointVector;
+        TimePointVector timePoints;
+
+        if (dictionary.HasKey(PROPERTY_NAME_TIMEGEOMETRY_TIMEPOINTS))
+        {
+          timePoints = ConvertMetaDataObjectToTimePointList(dictionary.Get(PROPERTY_NAME_TIMEGEOMETRY_TIMEPOINTS));
+        }
+        else if (dictionary.HasKey(PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS))
+        {
+          timePoints = ConvertMetaDataObjectToTimePointList(dictionary.Get(PROPERTY_KEY_TIMEGEOMETRY_TIMEPOINTS));
+        }
+
+        if (timePoints.empty())
+        {
+          MITK_ERROR << "Stored timepoints are empty. Meta information seems to bee invalid. Switch to ProportionalTimeGeometry fallback";
+        }
+        else if (timePoints.size() - 1 != image->GetDimension(3))
+        {
+          MITK_ERROR << "Stored timepoints (" << timePoints.size() - 1 << ") and size of image time dimension ("
+            << image->GetDimension(3) << ") do not match. Switch to ProportionalTimeGeometry fallback";
+        }
+        else
+        {
+          ArbitraryTimeGeometry::Pointer arbitraryTimeGeometry = ArbitraryTimeGeometry::New();
+          TimePointVector::const_iterator pos = timePoints.begin();
+          auto prePos = pos++;
+
+          for (; pos != timePoints.end(); ++prePos, ++pos)
+          {
+            arbitraryTimeGeometry->AppendNewTimeStepClone(slicedGeometry, *prePos, *pos);
+          }
+
+          timeGeometry = arbitraryTimeGeometry;
+        }
+      }
+    }
+
+    if (timeGeometry.IsNull())
+    { // Fallback. If no other valid time geometry has been created, create a ProportionalTimeGeometry
+      MITK_INFO << "used time geometry: " << ProportionalTimeGeometry::GetStaticNameOfClass();
+      ProportionalTimeGeometry::Pointer propTimeGeometry = ProportionalTimeGeometry::New();
+      propTimeGeometry->Initialize(slicedGeometry, image->GetDimension(3));
+      timeGeometry = propTimeGeometry;
+    }
+
     image->SetTimeGeometry(timeGeometry);
 
     buffer = nullptr;
-    MITK_INFO << "number of image components: " << image->GetPixelType().GetNumberOfComponents() << std::endl;
-
-    const itk::MetaDataDictionary &dictionary = nrrdImageIO->GetMetaDataDictionary();
-    for (auto iter = dictionary.Begin(), iterEnd = dictionary.End(); iter != iterEnd;
-         ++iter)
-    {
-      std::string key = std::string("meta.") + iter->first;
-      if (iter->second->GetMetaDataObjectTypeInfo() == typeid(std::string))
-      {
-        std::string value =
-          dynamic_cast<itk::MetaDataObject<std::string> *>(iter->second.GetPointer())->GetMetaDataObjectValue();
-        image->SetProperty(key.c_str(), mitk::StringProperty::New(value));
-      }
-    }
+    MITK_INFO << "number of image components: " << image->GetPixelType().GetNumberOfComponents();
 
     // end regular image loading
 
@@ -388,16 +487,16 @@ namespace mitk
 
       for (int labelIdx = 0; labelIdx < numberOfLabels; labelIdx++)
       {
-        TiXmlDocument doc;
+        tinyxml2::XMLDocument doc;
         sprintf(keybuffer, "label_%03u_%05d", layerIdx, labelIdx);
         _xmlStr = GetStringByKey(dictionary, keybuffer);
-        doc.Parse(_xmlStr.c_str());
+        doc.Parse(_xmlStr.c_str(), _xmlStr.size());
 
-        TiXmlElement *labelElem = doc.FirstChildElement("Label");
+        auto *labelElem = doc.FirstChildElement("Label");
         if (labelElem == nullptr)
           mitkThrow() << "Error parsing NRRD header for mitk::LabelSetImage IO";
 
-        label = mitk::LabelSetIOHelper::LoadLabelFromTiXmlDocument(labelElem);
+        label = mitk::LabelSetIOHelper::LoadLabelFromXMLDocument(labelElem);
 
         if (label->GetValue() == 0) // set exterior label is needed to hold exterior information
           output->SetExteriorLabel(label);
@@ -407,7 +506,98 @@ namespace mitk
       output->AddLabelSetToLayer(layerIdx, labelSet);
     }
 
-    MITK_INFO << "...finished!" << std::endl;
+    for (auto iter = dictionary.Begin(), iterEnd = dictionary.End(); iter != iterEnd;
+      ++iter)
+    {
+      if (iter->second->GetMetaDataObjectTypeInfo() == typeid(std::string))
+      {
+        const std::string& key = iter->first;
+        std::string assumedPropertyName = key;
+        std::replace(assumedPropertyName.begin(), assumedPropertyName.end(), '_', '.');
+
+        std::string mimeTypeName = GetMimeType()->GetName();
+
+        // Check if there is already a info for the key and our mime type.
+        mitk::CoreServicePointer<IPropertyPersistence> propPersistenceService(mitk::CoreServices::GetPropertyPersistence());
+        IPropertyPersistence::InfoResultType infoList = propPersistenceService->GetInfoByKey(key);
+
+        auto predicate = [&mimeTypeName](const PropertyPersistenceInfo::ConstPointer& x) {
+          return x.IsNotNull() && x->GetMimeTypeName() == mimeTypeName;
+        };
+        auto finding = std::find_if(infoList.begin(), infoList.end(), predicate);
+
+        if (finding == infoList.end())
+        {
+          auto predicateWild = [](const PropertyPersistenceInfo::ConstPointer& x) {
+            return x.IsNotNull() && x->GetMimeTypeName() == PropertyPersistenceInfo::ANY_MIMETYPE_NAME();
+          };
+          finding = std::find_if(infoList.begin(), infoList.end(), predicateWild);
+        }
+
+        PropertyPersistenceInfo::ConstPointer info;
+
+        if (finding != infoList.end())
+        {
+          assumedPropertyName = (*finding)->GetName();
+          info = *finding;
+        }
+        else
+        { // we have not found anything suitable so we generate our own info
+          auto newInfo = PropertyPersistenceInfo::New();
+          newInfo->SetNameAndKey(assumedPropertyName, key);
+          newInfo->SetMimeTypeName(PropertyPersistenceInfo::ANY_MIMETYPE_NAME());
+          info = newInfo;
+        }
+
+        std::string value =
+          dynamic_cast<itk::MetaDataObject<std::string>*>(iter->second.GetPointer())->GetMetaDataObjectValue();
+
+        mitk::BaseProperty::Pointer loadedProp = info->GetDeserializationFunction()(value);
+
+        if (loadedProp.IsNull())
+        {
+          MITK_ERROR << "Property cannot be correctly deserialized and is skipped. Check if data format is valid. Problematic property value string: \"" << value << "\"; Property info used to deserialized: " << info;
+          break;
+        }
+
+        output->SetProperty(assumedPropertyName.c_str(), loadedProp);
+
+        // Read properties should be persisted unless they are default properties
+        // which are written anyway
+        bool isDefaultKey = false;
+
+        for (const auto& defaultKey : m_DefaultMetaDataKeys)
+        {
+          if (defaultKey.length() <= assumedPropertyName.length())
+          {
+            // does the start match the default key
+            if (assumedPropertyName.substr(0, defaultKey.length()).find(defaultKey) != std::string::npos)
+            {
+              isDefaultKey = true;
+              break;
+            }
+          }
+        }
+
+        if (!isDefaultKey)
+        {
+          propPersistenceService->AddInfo(info);
+        }
+      }
+    }
+
+    // Handle UID
+    if (dictionary.HasKey(PROPERTY_KEY_UID))
+    {
+      itk::MetaDataObject<std::string>::ConstPointer uidData = dynamic_cast<const itk::MetaDataObject<std::string>*>(dictionary.Get(PROPERTY_KEY_UID));
+      if (uidData.IsNotNull())
+      {
+        mitk::UIDManipulator uidManipulator(output);
+        uidManipulator.SetUID(uidData->GetMetaDataObjectValue());
+      }
+    }
+
+    MITK_INFO << "...finished!";
 
     std::vector<BaseData::Pointer> result;
     result.push_back(output.GetPointer());
@@ -447,6 +637,18 @@ namespace mitk
   }
 
   LabelSetImageIO *LabelSetImageIO::IOClone() const { return new LabelSetImageIO(*this); }
+
+  void LabelSetImageIO::InitializeDefaultMetaDataKeys()
+  {
+    this->m_DefaultMetaDataKeys.push_back("NRRD.space");
+    this->m_DefaultMetaDataKeys.push_back("NRRD.kinds");
+    this->m_DefaultMetaDataKeys.push_back(PROPERTY_NAME_TIMEGEOMETRY_TYPE);
+    this->m_DefaultMetaDataKeys.push_back(PROPERTY_NAME_TIMEGEOMETRY_TIMEPOINTS);
+    this->m_DefaultMetaDataKeys.push_back("ITK.InputFilterName");
+    this->m_DefaultMetaDataKeys.push_back("label_");
+    this->m_DefaultMetaDataKeys.push_back("layer_");
+  }
+
 } // namespace
 
 #endif //__mitkLabelSetImageWriter__cpp

@@ -90,7 +90,7 @@ void QmitkChartExampleView::AddData()
     QString lineEditDataY = m_Controls.m_lineEditDataYVector->text();
     auto dataX = ConvertToDoubleVector(lineEditDataX);
     auto dataY = ConvertToDoubleVector(lineEditDataY);
-    auto dataXandY = CreateMap(dataX, dataY);
+    auto dataXandY = CreatePairList(dataX, dataY);
     QString data = QString::fromStdString(ConvertToText(dataXandY));
 
     std::string dataLabel = m_Controls.m_lineEditDataLabel->text().toStdString();
@@ -188,7 +188,7 @@ void QmitkChartExampleView::UpdateData()
     QString lineEditDataY = m_Controls.m_lineEditDataYVector->text();
     auto dataX = ConvertToDoubleVector(lineEditDataX);
     auto dataY = ConvertToDoubleVector(lineEditDataY);
-    auto dataXandY = CreateMap(dataX, dataY);
+    auto dataXandY = CreatePairList(dataX, dataY);
     QString data = QString::fromStdString(ConvertToText(dataXandY));
 
     std::string dataLabel = m_Controls.m_lineEditDataLabel->text().toStdString();
@@ -359,23 +359,23 @@ void QmitkChartExampleView::OnShowSubchartChanged(int newState) {
   m_Controls.m_Chart->SetShowSubchart(newState == Qt::Checked);
 }
 
-std::map<double, double> QmitkChartExampleView::CreateMap(std::vector<double> keys, std::vector<double> values) const
+std::vector< std::pair<double, double> > QmitkChartExampleView::CreatePairList(std::vector<double> keys, std::vector<double> values) const
 {
-    std::map<double, double> aMap;
+    std::vector< std::pair<double, double> > aMap;
     std::transform(keys.begin(), keys.end(), values.begin(), std::inserter(aMap, aMap.end()), [](double a, double b) {
         return std::make_pair(a, b);
         });
     return aMap;
 }
 
-std::string QmitkChartExampleView::ConvertToText(std::map<double, double> numbers, std::string delimiter) const
+std::string QmitkChartExampleView::ConvertToText(std::vector<std::pair<double, double> > numbers, std::string delimiter) const
 {
     std::ostringstream oss;
     oss.precision(3);
 
     if (!numbers.empty())
     {
-        for (const auto keyValue : numbers)
+        for (const auto& keyValue : numbers)
         {
             oss << keyValue.first << ":" << keyValue.second << delimiter;
         }
@@ -429,7 +429,7 @@ std::vector<double> QmitkChartExampleView::ConvertToDoubleVector(const QString& 
         return output;
     }
 
-    for (const QString entry : data.split(delimiter))
+    for (const QString& entry : data.split(delimiter))
     {
         output.push_back(entry.toDouble());
     }
@@ -444,7 +444,7 @@ std::vector<std::string> QmitkChartExampleView::ConvertToStringVector(const QStr
         return output;
     }
 
-    for (const QString entry : data.split(delimiter))
+    for (const QString& entry : data.split(delimiter))
     {
         output.push_back(entry.toStdString());
     }

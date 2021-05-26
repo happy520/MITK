@@ -1,26 +1,40 @@
-
 set(TOOL_CPPS "")
 
 # temporary suppress warnings in the following files until image accessors are fully integrated.
 set_source_files_properties( src/DataManagement/mitkImage.cpp COMPILE_FLAGS -DMITK_NO_DEPRECATED_WARNINGS )
 set_source_files_properties( src/Controllers/mitkSliceNavigationController.cpp COMPILE_FLAGS -DMITK_NO_DEPRECATED_WARNINGS )
 
-MITK_CREATE_MODULE(
+#if(MSVC)
+#  set(optional_private_package_depends psapi)
+#endif()
+
+mitk_create_module(
   INCLUDE_DIRS
-    PUBLIC ${MITK_BINARY_DIR}
-    PRIVATE src/Algorithms src/Controllers src/DataManagement src/Interactions src/IO src/Rendering ${OPENGL_INCLUDE_DIR}
-  DEPENDS PUBLIC mbilog CppMicroServices
+    PUBLIC
+      ${MITK_BINARY_DIR}
+    PRIVATE
+      src/Algorithms
+      src/Controllers
+      src/DataManagement
+      src/Interactions
+      src/IO
+      src/Rendering
+  DEPENDS
+    PUBLIC
+      mbilog
+      CppMicroServices
   PACKAGE_DEPENDS
-    PRIVATE tinyxml OpenGL
-    PUBLIC  ITK|ITKTransform+ITKImageGrid+ITKImageFeature+ITKIOImageBase+ITKIOHDF5+ITKIOLSM+ITKIOMRC+ITKIOBioRad+ITKIOGE+ITKIOStimulate+ITKIOBruker+ITKIOMINC
-    # We privately use/link all ITK modules in order to support all IO, Transform, etc.
-    # factories from ITK which are registered "automatically" via a factory manager.
-    PRIVATE ITK
-    PUBLIC  VTK|vtkFiltersTexture+vtkFiltersParallel+vtkImagingStencil+vtkImagingMath+vtkInteractionStyle+vtkRenderingOpenGL2+vtkRenderingContextOpenGL2+vtkRenderingVolumeOpenGL2+vtkRenderingFreeType+vtkRenderingLabel+vtkInteractionWidgets+vtkIOGeometry+vtkIOXML
-    PUBLIC  Boost|boost
-  SUBPROJECTS MITK-Core
+    PUBLIC
+      Boost
+      ITK|IOImageBase+SpatialObjects+Statistics
+      #ITK|Statistics+Transform
+      VTK|FiltersTexture+FiltersParallel+ImagingStencil+ImagingMath+InteractionStyle+RenderingOpenGL2+RenderingVolumeOpenGL2+RenderingFreeType+RenderingLabel+InteractionWidgets+IOGeometry+IOXML
+    PRIVATE
+      ITK|IOBioRad+IOBMP+IOBruker+IOCSV+IOGDCM+IOGE+IOGIPL+IOHDF5+IOIPL+IOJPEG+IOLSM+IOMesh+IOMeta+IOMINC+IOMRC+IONIFTI+IONRRD+IOPNG+IOSiemens+IOSpatialObjects+IOStimulate+IOTIFF+IOTransformBase+IOTransformHDF5+IOTransformInsightLegacy+IOTransformMatlab+IOVTK+IOXML
+      tinyxml2
+      ${optional_private_package_depends}
   # Do not automatically create CppMicroServices initialization code.
-  # Because the VTK 6 "auto-init" functionality injects file-local static
+  # Because the VTK "auto-init" functionality injects file-local static
   # initialization code in every cpp file which includes a VTK header,
   # static initialization order becomes an issue again. For the Mitk
   # core library, we need to ensure that the VTK static initialization stuff
@@ -33,6 +47,7 @@ MITK_CREATE_MODULE(
 if(NOT TARGET ${MODULE_TARGET})
   message(SEND_ERROR "Core target ${MODULE_TARGET} does not exist")
 endif()
+
 function(_itk_create_factory_register_manager)
   # In MITK_ITK_Config.cmake, we do *not* include ITK_USE_FILE, which
   # prevents multiple registrations/unregistrations of ITK IO factories
@@ -56,10 +71,7 @@ function(_itk_create_factory_register_manager)
 endfunction()
 _itk_create_factory_register_manager()
 
-if(MSVC_IDE OR MSVC_VERSION)
-  target_link_libraries(${MODULE_TARGET} PRIVATE psapi.lib)
+if(BUILD_TESTING)
+  add_subdirectory(TestingHelper)
+  add_subdirectory(test)
 endif()
-
-add_subdirectory(TestingHelper)
-
-add_subdirectory(test)

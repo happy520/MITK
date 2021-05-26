@@ -10,50 +10,44 @@ found in the LICENSE file.
 
 ============================================================================*/
 
-#if !defined(QmitkPointSetInteraction_H__INCLUDED)
-#define QmitkPointSetInteraction_H__INCLUDED
+#ifndef QMITKPOINTSETINTERACTIONVIEW_H
+#define QMITKPOINTSETINTERACTIONVIEW_H
 
-#include <berryISelectionListener.h>
-#include <QmitkAbstractView.h>
-#include <mitkILifecycleAwarePart.h>
-#include <mitkIRenderWindowPartListener.h>
-#include <mitkWeakPointer.h>
+#include "ui_QmitkPointSetInteractionViewControls.h"
+
 #include <mitkDataNode.h>
+#include <mitkIRenderWindowPartListener.h>
 
-namespace Ui
-{
-class QmitkPointSetInteractionControls;
-};
+#include <QmitkAbstractView.h>
+#include <QmitkSingleNodeSelectionWidget.h>
 
-/*!
-\brief QmitkPointSetInteractionView
-*/
 class QmitkPointSetInteractionView : public QmitkAbstractView, public mitk::IRenderWindowPartListener
 {
   Q_OBJECT
 
 public:
+
   static const std::string VIEW_ID;
 
-  QmitkPointSetInteractionView(QObject *parent=nullptr);
+  QmitkPointSetInteractionView();
   ~QmitkPointSetInteractionView() override;
 
+  void SetFocus() override;
+
+  void RenderWindowPartActivated(mitk::IRenderWindowPart* renderWindowPart) override;
+  void RenderWindowPartDeactivated(mitk::IRenderWindowPart* renderWindowPart) override;
+
+private Q_SLOT:
+
+  void OnCurrentSelectionChanged(QmitkSingleNodeSelectionWidget::NodeList nodes);
+  void OnAddPointSetClicked();
+
+private:
 
   void CreateQtPartControl(QWidget *parent) override;
 
-  ///
-  /// Sets the focus to an internal widget.
-  ///
-  void SetFocus() override;
+  Ui::QmitkPointSetInteractionViewControls* m_Controls;
 
-  void OnSelectionChanged(berry::IWorkbenchPart::Pointer part, const QList<mitk::DataNode::Pointer>& nodes) override;
-  void NodeChanged(const mitk::DataNode* node) override;
-  void RenderWindowPartActivated(mitk::IRenderWindowPart* renderWindowPart) override;
-  void RenderWindowPartDeactivated(mitk::IRenderWindowPart* renderWindowPart) override;
-protected slots:
-  void OnAddPointSetClicked();
-protected:
-  Ui::QmitkPointSetInteractionControls * m_Controls;
-  mitk::WeakPointer<mitk::DataNode> m_SelectedPointSetNode;
 };
-#endif // !defined(QmitkPointSetInteraction_H__INCLUDED)
+
+#endif

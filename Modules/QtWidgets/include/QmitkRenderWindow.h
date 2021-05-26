@@ -19,7 +19,7 @@ found in the LICENSE file.
 #include <MitkQtWidgetsExports.h>
 
 #include <vtkGenericOpenGLRenderWindow.h>
-#include <QVTKOpenGLWidget.h>
+#include <QVTKOpenGLNativeWidget.h>
 
 #include "mitkBaseRenderer.h"
 #include "mitkInteractionEventConst.h"
@@ -27,12 +27,13 @@ found in the LICENSE file.
 class QDragEnterEvent;
 class QDropEvent;
 class QInputEvent;
+class QMouseEvent;
 
 /**
  * \ingroup QmitkModule
  * \brief MITK implementation of the QVTKWidget
  */
-class MITKQTWIDGETS_EXPORT QmitkRenderWindow : public QVTKOpenGLWidget, public mitk::RenderWindowBase
+class MITKQTWIDGETS_EXPORT QmitkRenderWindow : public QVTKOpenGLNativeWidget, public mitk::RenderWindowBase
 {
   Q_OBJECT
 
@@ -68,33 +69,29 @@ public:
   QmitkRenderWindowMenu::LayoutIndex GetLayoutIndex();
 
   // MenuWidget need to update the Layout Design List when Layout had changed
-  void LayoutDesignListChanged(QmitkRenderWindowMenu::LayoutDesign layoutDesign);
+  void UpdateLayoutDesignList(QmitkRenderWindowMenu::LayoutDesign layoutDesign);
+
+  void UpdateCrosshairVisibility(bool);
+
+  void UpdateCrosshairRotationMode(int);
 
   // Activate or Deactivate MenuWidget.
   void ActivateMenuWidget(bool state);
 
   bool GetActivateMenuWidgetFlag() { return m_MenuWidgetActivated; }
   // Get it from the QVTKWidget parent
-  vtkRenderWindow *GetVtkRenderWindow() override { return GetRenderWindow(); }
+  vtkRenderWindow *GetVtkRenderWindow() override { return this->renderWindow(); }
 
   vtkRenderWindowInteractor *GetVtkRenderWindowInteractor() override { return nullptr; }
 
 protected:
 
+  // catch-all event handler
+  bool event(QEvent *e) override;
   // overloaded move handler
   void moveEvent(QMoveEvent *event) override;
   // overloaded show handler
   void showEvent(QShowEvent *event) override;
-  // overloaded mouse press handler
-  void mousePressEvent(QMouseEvent *event) override;
-  // overloaded mouse double-click handler
-  void mouseDoubleClickEvent(QMouseEvent *event) override;
-  // overloaded mouse move handler
-  void mouseMoveEvent(QMouseEvent *event) override;
-  // overloaded mouse release handler
-  void mouseReleaseEvent(QMouseEvent *event) override;
-  // overloaded key press handler
-  void keyPressEvent(QKeyEvent *event) override;
   // overloaded enter handler
   void enterEvent(QEvent *) override;
   // overloaded leave handler
@@ -111,13 +108,6 @@ protected:
   /// pointers and emitting the NodesDropped signal.
   void dropEvent(QDropEvent *event) override;
 
-#ifndef QT_NO_WHEELEVENT
-  // overload wheel mouse event
-  void wheelEvent(QWheelEvent *) override;
-#endif
-
-  void AdjustRenderWindowMenuVisibility(const QPoint &pos);
-
 Q_SIGNALS:
 
   void LayoutDesignChanged(QmitkRenderWindowMenu::LayoutDesign);
@@ -132,6 +122,8 @@ Q_SIGNALS:
 
   /// \brief Emits a signal to say that this window has had the following nodes dropped on it.
   void NodesDropped(QmitkRenderWindow *thisWindow, std::vector<mitk::DataNode *> nodes);
+
+  void mouseEvent(QMouseEvent *);
 
 private Q_SLOTS:
 

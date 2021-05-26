@@ -114,6 +114,12 @@ namespace mitk
     return m_TimeStepMap.find(timeStep) != m_TimeStepMap.end();
   }
 
+  const ImageStatisticsContainer::HistogramType*
+    ImageStatisticsContainer::GetHistogramForTimeStep(TimeStepType timeStep) const
+  {
+    return this->GetStatisticsForTimeStep(timeStep).m_Histogram;
+  }
+
   const ImageStatisticsContainer::ImageStatisticsObject &ImageStatisticsContainer::GetStatisticsForTimeStep(
     TimeStepType timeStep) const
   {
@@ -214,7 +220,7 @@ namespace mitk
 
     std::set<std::string> customKeys;
 
-    for (auto container : containers)
+    for (const auto &container : containers)
     {
       for (unsigned int i = 0; i < container->GetTimeSteps(); i++)
       {

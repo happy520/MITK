@@ -19,7 +19,8 @@ found in the LICENSE file.
 namespace mitk
 {
   /**
-  * Writes a LabelSetImage to a file
+  * Writes a LabelSetImage to a file.
+  * mitk::Identifiable UID is supported and will be serialized.
   * @ingroup Process
   */
   // The export macro should be removed. Currently, the unit
@@ -34,12 +35,7 @@ namespace mitk
     // -------------- AbstractFileReader -------------
 
     using AbstractFileReader::Read;
-    /**
-    * @brief Reads a number of mitk::LabelSetImages from the file system
-    * @return a vector of mitk::LabelSetImages
-    * @throws throws an mitk::Exception if an error ocurrs during parsing the nrrd header
-    */
-    std::vector<BaseData::Pointer> Read() override;
+
     ConfidenceLevel GetReaderConfidenceLevel() const override;
 
     // -------------- AbstractFileWriter -------------
@@ -52,8 +48,21 @@ namespace mitk
     int GetIntByKey(const itk::MetaDataDictionary &dic, const std::string &str);
     std::string GetStringByKey(const itk::MetaDataDictionary &dic, const std::string &str);
 
+  protected:
+    /**
+    * @brief Reads a number of mitk::LabelSetImages from the file system
+    * @return a vector of mitk::LabelSetImages
+    * @throws throws an mitk::Exception if an error ocurrs during parsing the nrrd header
+    */
+    std::vector<itk::SmartPointer<BaseData>> DoRead() override;
+
+    // Fills the m_DefaultMetaDataKeys vector with default values
+    virtual void InitializeDefaultMetaDataKeys();
+
   private:
     LabelSetImageIO *IOClone() const override;
+
+    std::vector<std::string> m_DefaultMetaDataKeys;
   };
 } // end of namespace mitk
 

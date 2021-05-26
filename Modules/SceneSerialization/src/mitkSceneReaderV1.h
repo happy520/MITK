@@ -12,6 +12,11 @@ found in the LICENSE file.
 
 #include "mitkSceneReader.h"
 
+namespace tinyxml2
+{
+  class XMLElement;
+}
+
 namespace mitk
 {
   class SceneReaderV1 : public SceneReader
@@ -21,22 +26,22 @@ namespace mitk
     itkFactorylessNewMacro(Self);
     itkCloneMacro(Self);
 
-      bool LoadScene(TiXmlDocument &document,
+    bool LoadScene(tinyxml2::XMLDocument &document,
                              const std::string &workingDirectory,
                              DataStorage *storage) override;
 
   protected:
     /**
-      \brief tries to create one DataNode from a given XML <node> element
+      \brief tries to create one DataNode from a given XML \<node\> element
     */
-    DataNode::Pointer LoadBaseDataFromDataTag(TiXmlElement *dataElement,
+    DataNode::Pointer LoadBaseDataFromDataTag(const tinyxml2::XMLElement *dataElement,
                                               const std::string &workingDirectory,
                                               bool &error);
 
     /**
       \brief reads all the properties from the XML document and recreates them in node
     */
-    bool DecorateNodeWithProperties(DataNode *node, TiXmlElement *nodeElement, const std::string &workingDirectory);
+    bool DecorateNodeWithProperties(DataNode *node, const tinyxml2::XMLElement *nodeElement, const std::string &workingDirectory);
 
     /**
       \brief Clear a default property list and handle some exceptions.
@@ -54,10 +59,10 @@ namespace mitk
     /**
       \brief reads all properties assigned to a base data element and assigns the list to the base data object
 
-      The baseDataNodeElem is supposed to be the <properties file="..."> element.
+      The baseDataNodeElem is supposed to be the \c \<properties file="..."\> element.
     */
     bool DecorateBaseDataWithProperties(BaseData::Pointer data,
-                                        TiXmlElement *baseDataNodeElem,
+                                        const tinyxml2::XMLElement *baseDataNodeElem,
                                         const std::string &workingDir);
 
     typedef std::pair<DataNode::Pointer, std::list<std::string>> NodesAndParentsPair;

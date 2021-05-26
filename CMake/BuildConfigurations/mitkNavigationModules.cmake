@@ -1,7 +1,7 @@
 message(STATUS "Configuring MITK Navigation Modules Build")
 
 set(MITK_CONFIG_PACKAGES
-  ACVD
+  OpenMesh
   Qt5
   BLUEBERRY
 )
@@ -14,7 +14,7 @@ set(MITK_USE_OpenIGTLink ON CACHE BOOL "MITK Use OpenIGTLink Library" FORCE)
 set(MITK_CONFIG_PLUGINS
   org.mitk.gui.qt.datamanager
   org.mitk.gui.qt.stdmultiwidgeteditor
-  org.mitk.gui.qt.dicom
+  org.mitk.gui.qt.dicombrowser
   org.mitk.gui.qt.imagenavigator
   org.mitk.gui.qt.measurementtoolbox
   org.mitk.gui.qt.properties

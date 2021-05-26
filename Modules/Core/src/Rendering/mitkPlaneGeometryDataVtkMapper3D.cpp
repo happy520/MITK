@@ -465,7 +465,7 @@ namespace mitk
           BaseRenderer::Pointer planeRenderer =
             dynamic_cast<BaseRenderer *>(rendererProp->GetWeakPointer().GetPointer());
           // Retrieve and update image to be mapped
-          const ImageVtkMapper2D::LocalStorage *localStorage = imageMapper->GetLocalStorage(planeRenderer);
+          const ImageVtkMapper2D::LocalStorage *localStorage = imageMapper->GetConstLocalStorage(planeRenderer);
 
           if (planeRenderer.IsNotNull())
           {
@@ -535,9 +535,13 @@ namespace mitk
               // do not use a VTK lookup table (we do that ourselves in m_LevelWindowFilter)
               texture->SetColorModeToDirectScalars();
 
+              auto* property3d = imageActor->GetProperty();
+              property3d->LightingOff();
+
               // re-use properties from the 2D image mapper
-              imageActor->SetProperty(localStorage->m_Actor->GetProperty());
-              imageActor->GetProperty()->SetAmbient(0.5);
+              auto* property2d = localStorage->m_ImageActor->GetProperty();
+              property3d->SetColor(property2d->GetColor());
+              property3d->SetOpacity(property2d->GetOpacity());
 
               // Set texture interpolation on/off
               bool textureInterpolation = node->IsOn("texture interpolation", renderer);

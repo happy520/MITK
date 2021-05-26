@@ -35,7 +35,9 @@ bool mitk::SegmentationInteractor::ChangeActiveLabel(StateMachineAction *, Inter
   // m_LastDisplayCoordinate = m_CurrentDisplayCoordinate;
   // m_CurrentDisplayCoordinate = positionEvent->GetPointerPositionOnScreen();
 
-  mitk::ToolManager *toolManager = mitk::ToolManagerProvider::GetInstance()->GetToolManager();
+  auto *toolManager = mitk::ToolManagerProvider::GetInstance()->GetToolManager(
+    mitk::ToolManagerProvider::MULTILABEL_SEGMENTATION);
+
   assert(toolManager);
 
   DataNode *workingNode(toolManager->GetWorkingData(0));
@@ -44,7 +46,7 @@ bool mitk::SegmentationInteractor::ChangeActiveLabel(StateMachineAction *, Inter
     auto *workingImage = dynamic_cast<mitk::LabelSetImage *>(workingNode->GetData());
     assert(workingImage);
 
-    int timestep = positionEvent->GetSender()->GetTimeStep();
+    const auto timestep = positionEvent->GetSender()->GetTimeStep(workingImage);
     int pixelValue = static_cast<int>(workingImage->GetPixelValueByWorldCoordinate(positionEvent->GetPositionInWorld(), timestep));
 
     workingImage->GetActiveLabelSet()->SetActiveLabel(pixelValue); // can be the background

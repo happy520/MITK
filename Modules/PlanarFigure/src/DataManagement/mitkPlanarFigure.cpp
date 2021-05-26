@@ -21,7 +21,6 @@ mitk::PlanarFigure::PlanarFigure()
   : m_SelectedControlPoint(-1),
     m_PreviewControlPointVisible(false),
     m_FigurePlaced(false),
-    m_PlaneGeometry(nullptr),
     m_PolyLineUpToDate(false),
     m_HelperLinesUpToDate(false),
     m_FeaturesUpToDate(false),
@@ -48,7 +47,6 @@ mitk::PlanarFigure::PlanarFigure(const Self &other)
     m_PreviewControlPoint(other.m_PreviewControlPoint),
     m_PreviewControlPointVisible(other.m_PreviewControlPointVisible),
     m_FigurePlaced(other.m_FigurePlaced),
-    m_PlaneGeometry(other.m_PlaneGeometry), // do not clone since SetPlaneGeometry() doesn't clone either
     m_PolyLineUpToDate(other.m_PolyLineUpToDate),
     m_HelperLinesUpToDate(other.m_HelperLinesUpToDate),
     m_FeaturesUpToDate(other.m_FeaturesUpToDate),
@@ -66,12 +64,12 @@ mitk::PlanarFigure::PlanarFigure(const Self &other)
 void mitk::PlanarFigure::SetPlaneGeometry(mitk::PlaneGeometry *geometry)
 {
   this->SetGeometry(geometry);
-  m_PlaneGeometry = dynamic_cast<PlaneGeometry *>(GetGeometry(0)); // geometry;
+
 }
 
 const mitk::PlaneGeometry *mitk::PlanarFigure::GetPlaneGeometry() const
 {
-  return m_PlaneGeometry;
+  return dynamic_cast<PlaneGeometry*>(GetGeometry(0));
 }
 
 bool mitk::PlanarFigure::IsClosed() const
@@ -252,13 +250,14 @@ mitk::Point2D mitk::PlanarFigure::GetControlPoint(unsigned int index) const
 mitk::Point3D mitk::PlanarFigure::GetWorldControlPoint(unsigned int index) const
 {
   Point3D point3D;
-  if ((m_PlaneGeometry != nullptr) && (index < m_NumberOfControlPoints))
+  const auto planeGeometry = this->GetPlaneGeometry();
+  if ((nullptr != planeGeometry) && (index < m_NumberOfControlPoints))
   {
-    m_PlaneGeometry->Map(m_ControlPoints.at(index), point3D);
+    planeGeometry->Map(m_ControlPoints.at(index), point3D);
     return point3D;
   }
 
-  itkExceptionMacro(<< "GetWorldControlPoint(): Invalid index!");
+  itkExceptionMacro(<< "GetWorldControlPoint(): Invalid plane geometry or index!");
 }
 
 const mitk::PlanarFigure::PolyLineType mitk::PlanarFigure::GetPolyLine(unsigned int index)
@@ -450,15 +449,16 @@ void mitk::PlanarFigure::ResetNumberOfControlPoints(int numberOfControlPoints)
 
 mitk::Point2D mitk::PlanarFigure::ApplyControlPointConstraints(unsigned int /*index*/, const Point2D &point)
 {
-  if (m_PlaneGeometry == nullptr)
+  const auto planeGeometry = this->GetPlaneGeometry();
+  if (nullptr == planeGeometry)
   {
     return point;
   }
 
   Point2D indexPoint;
-  m_PlaneGeometry->WorldToIndex(point, indexPoint);
+  planeGeometry->WorldToIndex(point, indexPoint);
 
-  BoundingBox::BoundsArrayType bounds = m_PlaneGeometry->GetBounds();
+  BoundingBox::BoundsArrayType bounds = planeGeometry->GetBounds();
   if (indexPoint[0] < bounds[0])
   {
     indexPoint[0] = bounds[0];
@@ -477,7 +477,7 @@ mitk::Point2D mitk::PlanarFigure::ApplyControlPointConstraints(unsigned int /*in
   }
 
   Point2D constrainedPoint;
-  m_PlaneGeometry->IndexToWorld(indexPoint, constrainedPoint);
+  planeGeometry->IndexToWorld(indexPoint, constrainedPoint);
 
   return constrainedPoint;
 }

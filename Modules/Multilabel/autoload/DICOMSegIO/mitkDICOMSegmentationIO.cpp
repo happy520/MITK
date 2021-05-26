@@ -47,41 +47,38 @@ namespace mitk
     AbstractFileWriter::SetRanking(10);
     AbstractFileReader::SetRanking(10);
     this->RegisterService();
-
-    this->AddDICOMTagsToService();
   }
 
-  void DICOMSegmentationIO::AddDICOMTagsToService()
+  std::vector<mitk::DICOMTagPath> DICOMSegmentationIO::GetDICOMTagsOfInterest()
   {
-    IDICOMTagsOfInterest *toiService = GetDicomTagsOfInterestService();
-    if (toiService != nullptr)
-    {
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_SEQUENCE_PATH());
+    std::vector<mitk::DICOMTagPath> result;
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_SEQUENCE_PATH());
 
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_NUMBER_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_LABEL_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_ALGORITHM_TYPE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_NUMBER_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_LABEL_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_ALGORITHM_TYPE_PATH());
 
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::ANATOMIC_REGION_SEQUENCE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::ANATOMIC_REGION_CODE_VALUE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::ANATOMIC_REGION_CODE_SCHEME_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::ANATOMIC_REGION_CODE_MEANING_PATH());
+    result.emplace_back(DICOMSegmentationConstants::ANATOMIC_REGION_SEQUENCE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::ANATOMIC_REGION_CODE_VALUE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::ANATOMIC_REGION_CODE_SCHEME_PATH());
+    result.emplace_back(DICOMSegmentationConstants::ANATOMIC_REGION_CODE_MEANING_PATH());
 
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENTED_PROPERTY_CATEGORY_SEQUENCE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_CATEGORY_CODE_VALUE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_CATEGORY_CODE_SCHEME_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_CATEGORY_CODE_MEANING_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENTED_PROPERTY_CATEGORY_SEQUENCE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_CATEGORY_CODE_VALUE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_CATEGORY_CODE_SCHEME_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_CATEGORY_CODE_MEANING_PATH());
 
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENTED_PROPERTY_TYPE_SEQUENCE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_TYPE_CODE_VALUE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_TYPE_CODE_SCHEME_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_TYPE_CODE_MEANING_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENTED_PROPERTY_TYPE_SEQUENCE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_TYPE_CODE_VALUE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_TYPE_CODE_SCHEME_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_TYPE_CODE_MEANING_PATH());
 
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENTED_PROPERTY_MODIFIER_SEQUENCE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_MODIFIER_CODE_VALUE_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_MODIFIER_CODE_SCHEME_PATH());
-      toiService->AddTagOfInterest(DICOMSegmentationConstants::SEGMENT_MODIFIER_CODE_MEANING_PATH());
-    }
+    result.emplace_back(DICOMSegmentationConstants::SEGMENTED_PROPERTY_MODIFIER_SEQUENCE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_MODIFIER_CODE_VALUE_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_MODIFIER_CODE_SCHEME_PATH());
+    result.emplace_back(DICOMSegmentationConstants::SEGMENT_MODIFIER_CODE_MEANING_PATH());
+
+    return result;
   }
 
   IFileIO::ConfidenceLevel DICOMSegmentationIO::GetWriterConfidenceLevel() const
@@ -142,7 +139,7 @@ namespace mitk
       StringLookupTable filesLut = filesProp->GetValue();
       const StringLookupTable::LookupTableType &lookUpTableMap = filesLut.GetLookupTable();
 
-      for (auto it : lookUpTableMap)
+      for (const auto &it : lookUpTableMap)
       {
         const char *fileName = (it.second).c_str();
         if (readFileFormat->loadFile(fileName, EXS_Unknown).good())
@@ -222,7 +219,7 @@ namespace mitk
 
         // Convert itk segmentation images to dicom image
         std::unique_ptr<dcmqi::ImageSEGConverter> converter = std::make_unique<dcmqi::ImageSEGConverter>();
-        std::unique_ptr<DcmDataset> result(converter->itkimage2dcmSegmentation(rawVecDataset, segmentations, tmpMetaInfoFile));
+        std::unique_ptr<DcmDataset> result(converter->itkimage2dcmSegmentation(rawVecDataset, segmentations, tmpMetaInfoFile, false));
 
         // Write dicom file
         DcmFileFormat dcmFileFormat(result.get());
@@ -268,7 +265,7 @@ namespace mitk
     return Unsupported;
   }
 
-  std::vector<BaseData::Pointer> DICOMSegmentationIO::Read()
+  std::vector<BaseData::Pointer> DICOMSegmentationIO::DoRead()
   {
     mitk::LocaleSwitch localeSwitch("C");
 

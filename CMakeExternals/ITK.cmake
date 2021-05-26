@@ -35,9 +35,7 @@ if(NOT DEFINED ITK_DIR)
   # see MITK bug #17338
   list(APPEND additional_cmake_args
     -DModule_ITKReview:BOOL=ON
-  # for 4.7, the OpenJPEG is needed by review but the variable must be set
-    -DModule_ITKOpenJPEG:BOOL=ON
-  # Added Module for Wavelets
+    -DModule_ITKOpenJPEG:BOOL=ON # for 4.7, the OpenJPEG is needed by review but the variable must be set
     -DModule_IsotropicWavelets:BOOL=ON
   )
 
@@ -52,9 +50,13 @@ if(NOT DEFINED ITK_DIR)
   ExternalProject_Add(${proj}
      LIST_SEPARATOR ${sep}
      UPDATE_COMMAND ""
-     # ITK 4.13.2 + GCC9 patch
-     URL ${MITK_THIRDPARTY_DOWNLOAD_PREFIX_URL}/ITK_a092294.tar.gz
-     URL_MD5 5e3f39105917d992d5079be473994bc6
+     URL ${MITK_THIRDPARTY_DOWNLOAD_PREFIX_URL}/InsightToolkit-4.13.3.tar.gz
+     URL_MD5 d1c10c8288b47577d718a71190444815
+     PATCH_COMMAND
+       # 2021/03/26: Only the patch file changed since the last snapshot.
+       # The only purpose of this comment is to change this .cmake file
+       # to make our build system aware of a change.
+       ${PATCH_COMMAND} -N -p1 -i ${CMAKE_CURRENT_LIST_DIR}/ITK-4.13.3.patch
      CMAKE_GENERATOR ${gen}
      CMAKE_GENERATOR_PLATFORM ${gen_platform}
      CMAKE_ARGS

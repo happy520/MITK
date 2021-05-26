@@ -123,30 +123,45 @@ vtkProp *mitk::SurfaceVtkMapper2D::GetVtkProp(mitk::BaseRenderer *renderer)
 void mitk::SurfaceVtkMapper2D::Update(mitk::BaseRenderer *renderer)
 {
   const mitk::DataNode *node = GetDataNode();
+
   if (node == nullptr)
+  {
+    this->ResetMapper(renderer);
     return;
+  }
+
   bool visible = true;
   node->GetVisibility(visible, renderer, "visible");
+
   if (!visible)
+  {
+    this->ResetMapper(renderer);
     return;
+  }
 
   auto *surface = static_cast<mitk::Surface *>(node->GetData());
+
   if (surface == nullptr)
+  {
+    this->ResetMapper(renderer);
     return;
+  }
+
+  const auto* worldGeometry = renderer->GetWorldTimeGeometry();
+  const auto timeBounds = worldGeometry->GetTimeBounds(renderer->GetTimeStep());
+
+  if (!surface->GetTimeGeometry()->IsValidTimePoint(timeBounds[0]))
+  {
+    this->ResetMapper(renderer);
+    return;
+  }
 
   // Calculate time step of the input data for the specified renderer (integer value)
   this->CalculateTimeStep(renderer);
 
-  // Check if time step is valid
-  const mitk::TimeGeometry *dataTimeGeometry = surface->GetTimeGeometry();
-  if ((dataTimeGeometry == nullptr) || (dataTimeGeometry->CountTimeSteps() == 0) ||
-      (!dataTimeGeometry->IsValidTimeStep(this->GetTimestep())))
-  {
-    return;
-  }
-
   surface->UpdateOutputInformation();
   LocalStorage *localStorage = m_LSH.GetLocalStorage(renderer);
+  localStorage->m_PropAssembly->VisibilityOn();
 
   // check if something important has changed and we need to rerender
   if ((localStorage->m_LastUpdateTime < node->GetMTime()) // was the node modified?
@@ -381,7 +396,7 @@ void mitk::SurfaceVtkMapper2D::ApplyAllProperties(mitk::BaseRenderer *renderer)
 
 void mitk::SurfaceVtkMapper2D::SetDefaultProperties(mitk::DataNode *node, mitk::BaseRenderer *renderer, bool overwrite)
 {
-  mitk::IPropertyAliases *aliases = mitk::CoreServices::GetPropertyAliases();
+  mitk::CoreServicePointer<mitk::IPropertyAliases> aliases(mitk::CoreServices::GetPropertyAliases());
   node->AddProperty("line width", FloatProperty::New(2.0f), renderer, overwrite);
   aliases->AddAlias("line width", "Surface.2D.Line Width", "Surface");
   node->AddProperty("scalar mode", VtkScalarModeProperty::New(), renderer, overwrite);

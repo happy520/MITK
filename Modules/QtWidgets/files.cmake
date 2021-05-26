@@ -3,6 +3,7 @@ file(GLOB_RECURSE H_FILES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURREN
 set(CPP_FILES
   QmitkAbstractDataStorageModel.cpp
   QmitkAbstractMultiWidget.cpp
+  QmitkAbstractNodeSelectionWidget.cpp
   QmitkApplicationCursor.cpp
   QmitkDataStorageComboBox.cpp
   QmitkDataStorageDefaultListModel.cpp
@@ -62,12 +63,14 @@ set(CPP_FILES
   mitkQtWidgetsActivator.cpp
   mitkDataStorageInspectorGenerator.cpp
   QmitkOverlayWidget.cpp
+  QmitkSimpleTextOverlayWidget.cpp
   QmitkNodeDetailsDialog.cpp
 )
 
 set(MOC_H_FILES
   include/QmitkAbstractDataStorageModel.h
   include/QmitkAbstractMultiWidget.h
+  include/QmitkAbstractNodeSelectionWidget.h
   include/QmitkDataStorageComboBox.h
   include/QmitkDataStorageTableModel.h
   include/QmitkDataStorageTreeModel.h
@@ -113,6 +116,7 @@ set(MOC_H_FILES
   include/QmitkDataStorageSelectionHistoryInspector.h
   include/QmitkModelViewSelectionConnector.h
   include/QmitkOverlayWidget.h
+  include/QmitkSimpleTextOverlayWidget.h
   include/QmitkNodeDetailsDialog.h
 )
 

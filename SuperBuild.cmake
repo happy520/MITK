@@ -1,5 +1,3 @@
-include(mitkFunctionInstallExternalCMakeProject)
-
 #-----------------------------------------------------------------------------
 # Convenient macro allowing to download a file
 #-----------------------------------------------------------------------------
@@ -83,13 +81,6 @@ if(EXTERNAL_BOOST_ROOT)
   set(BOOST_ROOT ${EXTERNAL_BOOST_ROOT})
 endif()
 
-# Setup file for setting custom ctest vars
-configure_file(
-  CMake/SuperbuildCTestCustom.cmake.in
-  ${MITK_BINARY_DIR}/CTestCustom.cmake
-  @ONLY
-)
-
 if(BUILD_TESTING)
   set(EXTERNAL_MITK_DATA_DIR "${MITK_DATA_DIR}" CACHE PATH "Path to the MITK data directory")
   mark_as_advanced(EXTERNAL_MITK_DATA_DIR)
@@ -104,6 +95,10 @@ endif()
 
 include(ExternalProject)
 include(mitkMacroQueryCustomEPVars)
+include(mitkFunctionInstallExternalCMakeProject)
+include(mitkFunctionCleanExternalProject)
+
+option(MITK_AUTOCLEAN_EXTERNAL_PROJECTS "Experimental: Clean external project builds if updated" ON)
 
 set(ep_prefix "${CMAKE_BINARY_DIR}/ep")
 set_property(DIRECTORY PROPERTY EP_PREFIX ${ep_prefix})
@@ -125,10 +120,6 @@ set(sep "^^")
 if(MSVC_VERSION)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /bigobj /MP")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj /MP")
-endif()
-
-if(MITK_USE_Boost_LIBRARIES)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_ALL_DYN_LINK")
 endif()
 
 # This is a workaround for passing linker flags
@@ -156,6 +147,7 @@ elseif(UNIX)
 endif()
 
 set(ep_common_args
+  -DCMAKE_POLICY_DEFAULT_CMP0091:STRING=OLD
   -DCMAKE_CXX_EXTENSIONS:STRING=${CMAKE_CXX_EXTENSIONS}
   -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
   -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=${CMAKE_CXX_STANDARD_REQUIRED}
@@ -220,18 +212,36 @@ set(mitk_depends )
 # Include external projects
 include(CMakeExternals/MITKData.cmake)
 foreach(p ${external_projects})
-  if(EXISTS ${CMAKE_SOURCE_DIR}/CMakeExternals/${p}.cmake)
-    include(CMakeExternals/${p}.cmake)
+  set(p_hash "")
+
+  set(p_file "${CMAKE_SOURCE_DIR}/CMakeExternals/${p}.cmake")
+  if(EXISTS ${p_file})
+    file(MD5 ${p_file} p_hash)
   else()
-    foreach(MITK_EXTENSION_DIR ${MITK_EXTENSION_DIRS})
-      get_filename_component(MITK_EXTENSION_DIR ${MITK_EXTENSION_DIR} ABSOLUTE)
-      set(MITK_CMAKE_EXTERNALS_EXTENSION_DIR ${MITK_EXTENSION_DIR}/CMakeExternals)
-      if(EXISTS ${MITK_CMAKE_EXTERNALS_EXTENSION_DIR}/${p}.cmake)
-        include(${MITK_CMAKE_EXTERNALS_EXTENSION_DIR}/${p}.cmake)
+    foreach(MITK_EXTENSION_DIR ${MITK_ABSOLUTE_EXTENSION_DIRS})
+      set(MITK_CMAKE_EXTERNALS_EXTENSION_DIR "${MITK_EXTENSION_DIR}/CMakeExternals")
+      set(p_file "${MITK_CMAKE_EXTERNALS_EXTENSION_DIR}/${p}.cmake")
+      if(EXISTS "${p_file}")
+        file(MD5 "${p_file}" p_hash)
         break()
       endif()
     endforeach()
   endif()
+
+  if(p_hash)
+    set(p_hash_file "${ep_prefix}/tmp/${p}-hash.txt")
+    if(MITK_AUTOCLEAN_EXTERNAL_PROJECTS)
+      if(EXISTS "${p_hash_file}")
+        file(READ "${p_hash_file}" p_prev_hash)
+        if(NOT p_hash STREQUAL p_prev_hash)
+          mitkCleanExternalProject(${p})
+        endif()
+      endif()
+    endif()
+    file(WRITE "${p_hash_file}" ${p_hash})
+  endif()
+
+  include("${p_file}" OPTIONAL)
 
   list(APPEND mitk_superbuild_ep_args
        -DMITK_USE_${p}:BOOL=${MITK_USE_${p}}
@@ -363,6 +373,12 @@ if(DOXYGEN_EXECUTABLE)
   )
 endif()
 
+if(MITK_DOXYGEN_BUILD_ALWAYS)
+  list(APPEND mitk_optional_cache_args
+    -DMITK_DOXYGEN_BUILD_ALWAYS:BOOL=${MITK_DOXYGEN_BUILD_ALWAYS}
+  )
+endif()
+
 set(proj MITK-Configure)
 
 ExternalProject_Add(${proj}
@@ -409,6 +425,7 @@ ExternalProject_Add(${proj}
     -DMITK_BUILD_CONFIGURATION:STRING=${MITK_BUILD_CONFIGURATION}
     -DMITK_FAST_TESTING:BOOL=${MITK_FAST_TESTING}
     -DMITK_XVFB_TESTING:BOOL=${MITK_XVFB_TESTING}
+    -DMITK_XVFB_TESTING_COMMAND:STRING=${MITK_XVFB_TESTING_COMMAND}
     -DCTEST_USE_LAUNCHERS:BOOL=${CTEST_USE_LAUNCHERS}
     # ----------------- Miscellaneous ---------------
     -DCMAKE_LIBRARY_PATH:PATH=${CMAKE_LIBRARY_PATH}

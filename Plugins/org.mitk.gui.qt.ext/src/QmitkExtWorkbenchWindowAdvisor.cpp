@@ -301,7 +301,7 @@ public:
       }
 
       //GetViewRegistry()->Find("org.mitk.views.imagenavigator");
-      if(windowAdvisor->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicomeditor"))
+      if(windowAdvisor->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicombrowser"))
       {
         windowAdvisor->openDicomEditorAction->setEnabled(true);
       }
@@ -351,7 +351,7 @@ public:
         i.next()->setEnabled(false);
       }
 
-      if(windowAdvisor->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicomeditor"))
+      if(windowAdvisor->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicombrowser"))
       {
         windowAdvisor->openDicomEditorAction->setEnabled(false);
       }
@@ -712,7 +712,7 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowCreate()
 
     if (showViewMenuItem)
     {
-      for (auto viewAction : viewActions)
+      for (auto viewAction : qAsConst(viewActions))
       {
         viewMenu->addAction(viewAction);
       }
@@ -748,7 +748,7 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowCreate()
   imageNavigatorAction = new QAction(berry::QtStyleManager::ThemeIcon(basePath + "image_navigator.svg"), "&Image Navigator", nullptr);
   bool imageNavigatorViewFound = window->GetWorkbench()->GetViewRegistry()->Find("org.mitk.views.imagenavigator");
 
-  if (this->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicomeditor"))
+  if (this->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicombrowser"))
   {
     openDicomEditorAction = new QmitkOpenDicomEditorAction(berry::QtStyleManager::ThemeIcon(basePath + "dicom.svg"), window);
   }
@@ -806,7 +806,7 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowCreate()
   mainActionsToolBar->addAction(closeProjectAction);
   mainActionsToolBar->addAction(undoAction);
   mainActionsToolBar->addAction(redoAction);
-  if(this->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicomeditor"))
+  if(this->GetWindowConfigurer()->GetWindow()->GetWorkbench()->GetEditorRegistry()->FindEditor("org.mitk.editors.dicombrowser"))
   {
     mainActionsToolBar->addAction(openDicomEditorAction);
   }
@@ -851,7 +851,7 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowCreate()
 
     QMultiMap<QString, berry::IViewDescriptor::Pointer> categoryViewDescriptorMap;
 
-    for (auto labelViewDescriptorPair : VDMap)
+    for (const auto &labelViewDescriptorPair : VDMap)
     {
       auto viewDescriptor = labelViewDescriptorPair.second;
       auto category = !viewDescriptor->GetCategoryPath().isEmpty()
@@ -863,7 +863,7 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowCreate()
 
     // Create a separate toolbar for each category
 
-    for (auto category : categoryViewDescriptorMap.uniqueKeys())
+    for (const auto &category : categoryViewDescriptorMap.uniqueKeys())
     {
       auto viewDescriptorsInCurrentCategory = categoryViewDescriptorMap.values(category);
 
@@ -896,7 +896,7 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowCreate()
           });
         }
 
-        for (auto viewDescriptor : viewDescriptorsInCurrentCategory)
+        for (const auto &viewDescriptor : qAsConst(viewDescriptorsInCurrentCategory))
         {
           auto viewAction = new berry::QtShowViewAction(window, viewDescriptor);
           toolbar->addAction(viewAction);
@@ -975,6 +975,12 @@ void QmitkExtWorkbenchWindowAdvisor::PostWindowOpen()
       mitk::DataStorageEditorInput::Pointer dsInput(new mitk::DataStorageEditorInput(dsRef));
       mitk::WorkbenchUtil::OpenEditor(configurer->GetWindow()->GetActivePage(),dsInput);
     }
+  }
+
+  auto introPart = configurer->GetWindow()->GetWorkbench()->GetIntroManager()->GetIntro();
+  if (introPart.IsNotNull())
+  {
+    configurer->GetWindow()->GetWorkbench()->GetIntroManager()->ShowIntro(GetWindowConfigurer()->GetWindow(), false);
   }
 }
 

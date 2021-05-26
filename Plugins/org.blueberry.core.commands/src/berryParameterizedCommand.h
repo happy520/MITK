@@ -157,19 +157,19 @@ public:
   uint HashCode() const override;
 
   /**
-   * Returns a {@link String} containing the command id, parameter ids and
-   * parameter values for this {@link ParameterizedCommand}. The returned
-   * {@link String} can be stored by a client and later used to reconstruct an
+   * Returns a \c String containing the command id, parameter ids and
+   * parameter values for this \c ParameterizedCommand . The returned
+   * \c String can be stored by a client and later used to reconstruct an
    * equivalent {@link ParameterizedCommand} using the
-   * {@link CommandManager#deserialize(String)} method.
+   * \c CommandManager.deserialize(String) method.
    * <p>
-   * The syntax of the returned {@link String} is as follows:
+   * The syntax of the returned \c String is as follows:
    * </p>
    *
    * <blockquote>
-   * <code>serialization = <u>commandId</u> [ '(' parameters ')' ]</code><br>
+   * <code>serialization = commandId [ '(' parameters ')' ]</code><br>
    * <code>parameters = parameter [ ',' parameters ]</code><br>
-   * <code>parameter = <u>parameterId</u> [ '=' <u>parameterValue</u> ]</code>
+   * <code>parameter = parameterId [ '=' parameterValue ]</code>
    * </blockquote>
    *
    * <p>
@@ -178,9 +178,9 @@ public:
    * <code>,</code> and <code>=</code>) indicate literal characters.
    * </p>
    * <p>
-   * <code><u>commandId</u></code> represents the command id encoded with
-   * separator characters escaped. <code><u>parameterId</u></code> and
-   * <code><u>parameterValue</u></code> represent the parameter ids and
+   * <code>commandId</code> represents the command id encoded with
+   * separator characters escaped. <code>parameterId</code> and
+   * <code>parameterValue</code> represent the parameter ids and
    * values encoded with separator characters escaped. The separator
    * characters <code>(</code>, <code>)</code>, <code>,</code> and
    * <code>=</code> are escaped by prepending a <code>%</code>. This
@@ -189,7 +189,7 @@ public:
    * </p>
    * <p>
    * The order of the parameters is not defined (and not important). A missing
-   * <code><u>parameterValue</u></code> indicates that the value of the
+   * <code>parameterValue</code> indicates that the value of the
    * parameter is <code>null</code>.
    * </p>
    * <p>

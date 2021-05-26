@@ -82,8 +82,8 @@ void QmitkMatchPointFrameCorrection::SetFocus()
 
 void QmitkMatchPointFrameCorrection::CreateConnections()
 {
-  connect(m_Controls.imageNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
-  connect(m_Controls.maskNodeSelector, SIGNAL(CurrentSelectionChanged(QList<mitk::DataNode::Pointer>)), this, SLOT(OnNodeSelectionChanged(QList<mitk::DataNode::Pointer>)));
+  connect(m_Controls.imageNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointFrameCorrection::OnNodeSelectionChanged);
+  connect(m_Controls.maskNodeSelector, &QmitkAbstractNodeSelectionWidget::CurrentSelectionChanged, this, &QmitkMatchPointFrameCorrection::OnNodeSelectionChanged);
 
   // ------
   // Tab 1 - Shared library loading interface
@@ -226,9 +226,6 @@ void QmitkMatchPointFrameCorrection::CreateQtPartControl(QWidget* parent)
 void QmitkMatchPointFrameCorrection::ConfigureNodeSelectorPredicates()
 {
   auto isImage = mitk::MITKRegistrationHelper::ImageNodePredicate();
-  mitk::NodePredicateDataType::Pointer isLabelSet = mitk::NodePredicateDataType::New("LabelSetImage");
-  mitk::NodePredicateProperty::Pointer isBinary = mitk::NodePredicateProperty::New("binary", mitk::BoolProperty::New(true));
-  mitk::NodePredicateAnd::Pointer isLegacyMask = mitk::NodePredicateAnd::New(isImage, isBinary);
   mitk::NodePredicateBase::Pointer maskDimensionPredicate = mitk::NodePredicateOr::New(mitk::NodePredicateDimension::New(3), mitk::NodePredicateDimension::New(4)).GetPointer();
   mitk::NodePredicateDimension::Pointer imageDimensionPredicate = mitk::NodePredicateDimension::New(4);
 
@@ -237,7 +234,7 @@ void QmitkMatchPointFrameCorrection::ConfigureNodeSelectorPredicates()
 
   m_Controls.imageNodeSelector->SetNodePredicate(mitk::NodePredicateAnd::New(isImage, imageDimensionPredicate));
 
-  mitk::NodePredicateAnd::Pointer maskPredicate = mitk::NodePredicateAnd::New(mitk::NodePredicateOr::New(isLegacyMask, isLabelSet), maskDimensionPredicate);
+  mitk::NodePredicateAnd::Pointer maskPredicate = mitk::NodePredicateAnd::New(mitk::MITKRegistrationHelper::MaskNodePredicate(), maskDimensionPredicate);
   if (m_spSelectedTargetData != nullptr)
   {
     auto hasSameGeometry = mitk::NodePredicateGeometry::New(m_spSelectedTargetData->GetGeometry());
@@ -606,7 +603,10 @@ void QmitkMatchPointFrameCorrection::OnRegJobFinished()
 {
   this->m_Working = false;
 
-  this->GetRenderWindowPart()->RequestUpdate();
+  auto* renderWindowPart = this->GetRenderWindowPart();
+
+  if (nullptr != renderWindowPart)
+    renderWindowPart->RequestUpdate();
 
   this->CheckInputs();
   this->ConfigureRegistrationControls();
@@ -624,7 +624,11 @@ void QmitkMatchPointFrameCorrection::OnMapResultIsAvailable(mitk::Image::Pointer
                                          spMappedData.GetPointer(), "", job->m_TargetDataUID, false, job->m_InterpolatorLabel);
 
   this->GetDataStorage()->Add(spResultNode, this->m_spSelectedTargetNode);
-  this->GetRenderWindowPart()->RequestUpdate();
+
+  auto* renderWindowPart = this->GetRenderWindowPart();
+
+  if (nullptr != renderWindowPart)
+    renderWindowPart->RequestUpdate();
 };
 
 void QmitkMatchPointFrameCorrection::OnMapJobError(QString err)

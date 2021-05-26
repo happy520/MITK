@@ -8,12 +8,10 @@ set(SRC_CPP_FILES
   QmitkSliceNavigationListener.cpp
   QmitkSingleNodeSelectionWidget.cpp
   QmitkNodeSelectionDialog.cpp
-  QmitkAbstractNodeSelectionWidget.cpp
   QmitkMultiNodeSelectionWidget.cpp
   QmitkMultiWidgetDecorationManager.cpp
   QmitkNodeSelectionPreferenceHelper.cpp
   QmitkNodeSelectionButton.cpp
-  QmitkSimpleTextOverlayWidget.cpp
 )
 
 set(INTERNAL_CPP_FILES
@@ -42,10 +40,8 @@ set(MOC_H_FILES
   src/QmitkSliceNavigationListener.h
   src/QmitkSingleNodeSelectionWidget.h
   src/QmitkNodeSelectionDialog.h
-  src/QmitkAbstractNodeSelectionWidget.h
   src/QmitkMultiNodeSelectionWidget.h
   src/QmitkNodeSelectionButton.h
-  src/QmitkSimpleTextOverlayWidget.h
   src/internal/QmitkCommonActivator.h
   src/internal/QmitkNodeSelectionPreferencePage.h
   src/internal/QmitkNodeSelectionListItemWidget.h

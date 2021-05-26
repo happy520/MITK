@@ -53,7 +53,7 @@ found in the LICENSE file.
 #include <iostream>
 
 
-const std::string GenericDataFittingView::VIEW_ID = "org.mitk.gui.qt.fit.genericfitting";
+const std::string GenericDataFittingView::VIEW_ID = "org.mitk.views.fit.genericfitting";
 
 void GenericDataFittingView::SetFocus()
 {
@@ -440,10 +440,8 @@ void GenericDataFittingView::GenerateModelFit_PixelBased(mitk::modelFit::ModelFi
   if (m_selectedMask.IsNotNull())
   {
     fitGenerator->SetMask(m_selectedMask);
-    roiUID = mitk::EnsureModelFitUID(this->m_selectedMaskNode);
+    roiUID = m_selectedMask->GetUID();
   }
-
-  mitk::EnsureModelFitUID(this->m_selectedNode);
 
   fitGenerator->SetDynamicImage(this->m_selectedImage);
   fitGenerator->SetFitFunctor(fitFunctor);
@@ -496,8 +494,7 @@ void GenericDataFittingView::GenerateModelFit_ROIBased(
 
   generator = fitGenerator.GetPointer();
 
-  mitk::EnsureModelFitUID(this->m_selectedNode);
-  std::string roiUID = mitk::EnsureModelFitUID(this->m_selectedMaskNode);
+  std::string roiUID = this->m_selectedMask->GetUID();
 
   //Create model info
   modelFitInfo = mitk::modelFit::CreateFitInfoFromModelParameterizer(modelParameterizer,

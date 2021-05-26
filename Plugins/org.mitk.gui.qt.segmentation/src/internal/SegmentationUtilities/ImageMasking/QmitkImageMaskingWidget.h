@@ -47,14 +47,11 @@ private slots:
   /** @brief This slot is called if the selection in the workbench is changed. */
   void OnSelectionChanged(unsigned int index, const mitk::DataNode* selection);
 
-  /** @brief This slot is called if user activates the radio button for masking an image with a binary image mask. */
-  void OnImageMaskingToggled(bool);
-
-  /** @brief This slot is called if user activates the radio button for masking an image with a surface. */
-  void OnSurfaceMaskingToggled(bool);
-
   /** @brief This slot is called if user activates the button to mask an image. */
   void OnMaskImagePressed();
+
+  /** @brief This slot is called if the user toggles the "Custom" radio button. */
+  void OnCustomValueButtonToggled(bool checked);
 
 private:
 

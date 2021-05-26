@@ -22,7 +22,6 @@ found in the LICENSE file.
 #include "mitkModelFitParameter.h"
 #include "mitkModelFitStaticParameterMap.h"
 #include "mitkScalarListLookupTable.h"
-#include "mitkModelFitUIDHelper.h"
 #include "mitkModelParameterizerBase.h"
 #include "mitkModelTraitsInterface.h"
 
@@ -40,7 +39,7 @@ namespace mitk
     class MITKMODELFIT_EXPORT ModelFitInfo : public itk::LightObject
     {
     public:
-      typedef mitk::NodeUIDType UIDType;
+      typedef std::string UIDType;
       typedef std::vector<Parameter::Pointer> ParamListType;
       typedef ParamListType::const_iterator ConstIterType;
 
@@ -113,11 +112,9 @@ namespace mitk
       StaticParameterMap staticParamMap;
       /** ModelFitConstants::FIT_INPUT_ROIUID_PROPERTY_NAME */
       UIDType roiUID;
-      /** ModelFitConstants::FIT_INPUT_IMAGEUID_PROPERTY_NAME */
-      UIDType inputUID;
       /** ModelFitConstants::FIT_INPUT_DATA_PROPERTY_NAME */
       ScalarListLookupTable inputData;
-      mitk::Image::Pointer inputImage;
+      mitk::Image::ConstPointer inputImage;
 
     private:
       typedef ParamListType::iterator IterType;
@@ -161,8 +158,7 @@ namespace mitk
         const mitk::DataStorage* storage);
 
     /** creates a new ModelFitInfo instance from a passed modal instance and his traits instance*
-    *	@param usedModel	Pointer to a model which was used for a fit, which should get a fit info created.
-    *	@param modelTraits	Pointer to traits interface for the model that was used for the fit.
+    *	@param usedParameterizer Pointer to a model which was used for a fit, which should get a fit info created.
     * @param inputImage Pointer to the input image. If it has no UID yet, a property will be added to the node.
     * @param fitType String identifying the type of the fit (e.g. ROI based or voxel based)
     * @param fitName Optional human readable name of the fit.
@@ -170,13 +166,13 @@ namespace mitk
     *	@return			The newly created modelfit on success or NULL otherwise.*/
     MITKMODELFIT_EXPORT ModelFitInfo::Pointer CreateFitInfoFromModelParameterizer(
       const ModelParameterizerBase* usedParameterizer, mitk::BaseData* inputImage,
-      const std::string& fitType, const std::string& fitName = "", const NodeUIDType roiUID = "");
+      const std::string& fitType, const std::string& fitName = "", const ModelFitInfo::UIDType& roiUID = "");
     /** @overload
      Overloaded version that allows additional definition of optional input data for the fit.*/
     MITKMODELFIT_EXPORT ModelFitInfo::Pointer CreateFitInfoFromModelParameterizer(
       const ModelParameterizerBase* usedParameterizer, mitk::BaseData* inputImage,
       const std::string& fitType, const ScalarListLookupTable& inputData, const std::string& fitName = "",
-      const NodeUIDType roiUID = "");
+      const ModelFitInfo::UIDType& roiUID = "");
 
     /** Returns all nodes that belong to the fit indicated by the passed UID.
      *	@param fitUID	The uid of the fit that is relevant for the query.

@@ -27,23 +27,15 @@ namespace mitk
     itkCloneMacro(Self) Mapper::Pointer
       CreateMapper(mitk::DataNode *node, MapperSlotId slotId) override;
     void SetDefaultProperties(mitk::DataNode *node) override;
-    const char *GetFileExtensions() override;
+    std::string GetFileExtensions() override;
     mitk::CoreObjectFactoryBase::MultimapType GetFileExtensionsMap() override;
-    const char *GetSaveFileExtensions() override;
+    std::string GetSaveFileExtensions() override;
     mitk::CoreObjectFactoryBase::MultimapType GetSaveFileExtensionsMap() override;
 
   protected:
     MultilabelObjectFactory();
     ~MultilabelObjectFactory() override;
     void CreateFileExtensionsMap();
-    MultimapType m_FileExtensionsMap;
-    MultimapType m_SaveFileExtensionsMap;
-
-  private:
-    itk::ObjectFactoryBase::Pointer m_LabelSetImageIOFactory;
-    itk::ObjectFactoryBase::Pointer m_LabelSetImageWriterFactory;
-
-    std::vector<mitk::AbstractFileIO *> m_FileIOs;
   };
 }
 
